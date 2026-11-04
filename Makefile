@@ -3,6 +3,9 @@
 #   make tx      milestone 2: transmit MAC unit test
 #   make rx      milestone 3: receive MAC unit test
 #   make loop    milestone 4: full MAC (TX + RX + async FIFOs) in loopback
+#   make ingress milestone 5: ingress (store-and-forward) buffer unit test
+#   make table   milestone 5: MAC learning table unit test
+#   make bugs    rebuild with each injected bug; fails if any test still passes
 #   make test    every test so far
 # Recipe lines start with '>' instead of a TAB (easier to copy-paste).
 .RECIPEPREFIX := >
@@ -10,7 +13,7 @@ CDC    := rtl/cdc/reset_sync.v rtl/cdc/sync_2ff.v rtl/cdc/fifo_mem.v rtl/cdc/wpt
 MAC    := rtl/eth_mac_tx.v rtl/eth_mac_rx.v rtl/eth_mac.v
 VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCALEMOD -Irtl -j 4
 
-.PHONY: crc tx rx loop test clean
+.PHONY: crc tx rx loop ingress table bugs test clean
 crc:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_crc tb/tb_crc32.sv --top-module tb_crc32 -o sim > build/build_crc.log
@@ -34,7 +37,27 @@ loop:
 >   echo "$$out" | grep -E "^clocks|^loopback|ERROR"; echo "$$out" | grep -q "RESULT: PASS" || { echo "RESULT: FAIL"; exit 1; }; \
 > done; echo "RESULT: PASS (5 clock configurations)"
 
-test: crc tx rx loop
+ingress:
+> @mkdir -p build
+> verilator $(VFLAGS) --Mdir build/obj_ingress rtl/ingress_buf.v tb/tb_ingress_buf.sv --top-module tb_ingress_buf -o sim > build/build_ingress.log
+> ./build/obj_ingress/sim | grep -v finish
+
+table:
+> @mkdir -p build
+> verilator $(VFLAGS) --Mdir build/obj_table rtl/mac_table.v tb/tb_mac_table.sv --top-module tb_mac_table -o sim > build/build_table.log
+> ./build/obj_table/sim | grep -v finish
+
+# each line: <define> <rtl file> <testbench top>
+BUGS := BUG_NO_REWIND:rtl/ingress_buf.v:tb_ingress_buf BUG_NO_MOVE:rtl/mac_table.v:tb_mac_table
+bugs:
+> @mkdir -p build
+> @for b in $(BUGS); do \
+>   def=$${b%%:*}; rest=$${b#*:}; src=$${rest%%:*}; top=$${rest#*:}; \
+>   verilator $(VFLAGS) +define+$$def --Mdir build/obj_$$def $$src tb/$$top.sv --top-module $$top -o sim > build/build_$$def.log; \
+>   if ./build/obj_$$def/sim | grep -q "RESULT: PASS"; then echo "$$def: NOT caught"; exit 1; else echo "$$def: caught"; fi; \
+> done; echo "RESULT: PASS (every injected bug caught)"
+
+test: crc tx rx loop ingress table bugs
 
 clean:
 > rm -rf build
