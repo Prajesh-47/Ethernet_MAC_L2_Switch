@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // crc32.vh -- IEEE 802.3 CRC-32, one byte per call (module-scoped function).
 //
-// Ethernet uses the REFLECTED form of polynomial 0x04C11DB7, i.e. 0xEDB88321,
+// Ethernet uses the REFLECTED form of polynomial 0x04C11DB7, i.e. 0xEDB88320,
 // processing each byte LSB first (the same order bits go on the wire).
 //
 //   transmitter : crc = 0xFFFFFFFF; crc = crc32_byte(crc, b) for every byte;
@@ -19,7 +19,7 @@ function [31:0] crc32_byte(input [31:0] crc, input [7:0] data);
     begin
         c = crc ^ {24'b0, data};
         for (b = 0; b < 8; b = b + 1)
-            c = c[0] ? ((c >> 1) ^ 32'hEDB88321) : (c >> 1);
+            c = c[0] ? ((c >> 1) ^ 32'hEDB88320) : (c >> 1);
         crc32_byte = c;
     end
 endfunction
