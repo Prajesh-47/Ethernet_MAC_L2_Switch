@@ -7,6 +7,7 @@
 #   make table   milestone 5: MAC learning table unit test
 #   make core    milestone 6: switch core (forwarding, arbitration, fork) unit test
 #   make smoke   milestone 6: whole 4-port switch, 10 directed steps over GMII
+#   make sim     milestone 7: whole switch, randomized, 4 independent rx clocks, 3 seeds
 #   make bugs    rebuild with each injected bug; fails if any test still passes
 #   make test    every test so far
 # Recipe lines start with '>' instead of a TAB (easier to copy-paste).
@@ -16,7 +17,7 @@ MAC    := rtl/eth_mac_tx.v rtl/eth_mac_rx.v rtl/eth_mac.v
 SW     := rtl/ingress_buf.v rtl/mac_table.v rtl/switch_core.v rtl/eth_switch_4port.v
 VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCALEMOD -Irtl -j 4
 
-.PHONY: crc tx rx loop ingress table core smoke bugs test clean
+.PHONY: crc tx rx loop ingress table core smoke sim bugs test clean
 crc:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_crc tb/tb_crc32.sv --top-module tb_crc32 -o sim > build/build_crc.log
@@ -60,6 +61,19 @@ smoke:
 > verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --Mdir build/obj_smoke $(CDC) $(MAC) $(SW) tb/tb_switch_smoke.sv --top-module tb_switch_smoke -o sim > build/build_smoke.log
 > ./build/obj_smoke/sim | grep -v finish
 
+# no-drop mode (20% load): every expected copy must arrive. The first seed prints
+# the full coverage table, the others one summary line each.
+SEEDS := 1 2 3
+sim:
+> @mkdir -p build
+> verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --Mdir build/obj_sim $(CDC) $(MAC) $(SW) tb/tb_switch.sv --top-module tb_switch -o sim > build/build_sim.log
+> @first=1; for s in $(SEEDS); do \
+>   out=$$(./build/obj_sim/sim +N=300 +LOAD=20 +verilator+seed+$$s); \
+>   if [ $$first = 1 ]; then echo "$$out" | grep -v finish; first=0; \
+>   else echo "seed $$s: $$(echo "$$out" | grep -E '^coverage|^delivered|^RESULT' | tr '\n' ' ')"; fi; \
+>   echo "$$out" | grep -q "RESULT: PASS" || { echo "RESULT: FAIL (seed $$s)"; exit 1; }; \
+> done; echo "RESULT: PASS ($(words $(SEEDS)) seeds)"
+
 # each entry: <define>:<rtl file>:<testbench top>
 BUGS := BUG_NO_REWIND:rtl/ingress_buf.v:tb_ingress_buf BUG_NO_MOVE:rtl/mac_table.v:tb_mac_table \
         BUG_PER_EGRESS_PRIORITY:rtl/switch_core.v:tb_switch_core BUG_FORK_ANY_READY:rtl/switch_core.v:tb_switch_core \
@@ -72,7 +86,7 @@ bugs:
 >   if ./build/obj_$$def/sim | grep -q "RESULT: PASS"; then echo "$$def: NOT caught"; exit 1; else echo "$$def: caught"; fi; \
 > done; echo "RESULT: PASS (every injected bug caught)"
 
-test: crc tx rx loop ingress table core smoke bugs
+test: crc tx rx loop ingress table core smoke sim bugs
 
 clean:
 > rm -rf build
