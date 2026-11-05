@@ -229,6 +229,15 @@ arrive after a stall, so it still moves one word per clock.
 previous frame's last bytes were still in the slice. `tb_mac_loop` checks this on every clock. It also now
 sends lone bytes into a fully idle TX path, because a deliberately broken flag passed without that case.
 
+### Reset network: looked at, no change made
+
+Reset showed up as a data path because `rtl/cdc/async_fifo.v` gates its handshake with reset
+(`s_axis_tready = wrst_n & ~wfull`). The register slice shortened what that signal drives, and reset is no
+longer on the worst `sys_clk` path for any seed.
+
+An experiment gave each ingress buffer, the MAC table and the core its own reset flip-flop, so one long net
+no longer spans the design. It reached 95-98 MHz against 98-102 MHz without them, so it wasn't added.
+
 ## Where the time goes now
 
 All three paths are from speed grade 8. Routing is still 66-85% of the `sys_clk` paths, and the worst path
@@ -242,17 +251,17 @@ differs by seed.
 
 ## Next steps
 
-In order:
+No FPGA board is available, so the [roadmap](roadmap.md) set a limit: stop after the crossbar and reset work,
+even if `sys_clk` is short of 125 MHz. **That limit has been reached.** The gap is about 25%, and no further
+timing fixes are planned. The two remaining phase 1 tasks are in the roadmap.
 
-No FPGA board is available, so the [roadmap](roadmap.md) sets a limit: stop after the reset work, even if
-`sys_clk` is short of 125 MHz.
+If this work is ever resumed, these are the places to start:
 
-1. **Look at the reset network.** Check why reset appears as a data path, and whether it should use a
-   global net or per-port synchronizers.
-After that limit, only these remain, if ever needed:
-
-- **Fix the GMII TX paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
-   `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
+- **Arbitration:** `rr` or `xfer` through grants to `own_v`, on the worst path for two of three seeds.
+- **High fan-out enables:** such as `mem_we` driving `cap_dst`, the worst path on the other seed.
+- **GMII TX paths** in `rtl/eth_mac_tx.v`, such as precomputing the `nbytes` comparison. The slowest TX clock
+  still misses 125 MHz on two of three seeds. FIFO pointer paths need more care, see
+  [Constraints](#constraints-on-this-work).
 
 ## Clock targets
 
