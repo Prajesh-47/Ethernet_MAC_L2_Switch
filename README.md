@@ -191,6 +191,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 
 ## Further documentation
 
+- [Project guide](docs/project_guide.md): the whole project explained from the start, with no Verilog needed
 - [FPGA timing log](docs/fpga_timing.md): current area and Fmax, how to reproduce them, what each change did and why, and the next timing fixes
 - [Roadmap](docs/roadmap.md): planned phases from timing closure to real traffic, and optional features
 
