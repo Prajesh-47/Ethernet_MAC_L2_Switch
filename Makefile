@@ -27,7 +27,7 @@ VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCA
 # test would look green in CI)
 run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
 
-.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs test all clean
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs test all clean synth pnr
 # UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
 # the switch top does not use the ingress descriptor's length; nothing else is waived
 lint:
@@ -139,6 +139,22 @@ sysbugs:
 >     [ $$got = $$want ] || { echo "$$b:$$r  <-- expected $$want"; exit 1; }; \
 >   done; echo "$$b:$$r"; \
 > done; echo "RESULT: PASS (whole-switch bug results as expected)"
+
+# FPGA flow (not part of `make test`). synth needs only yosys; pnr also needs
+# nextpnr-ecp5 and reports timing without failing, because it does not close yet.
+RTL        := $(CDC) $(MAC) $(SW)
+PNR_DEVICE ?= --um-45k
+PNR_SPEED  ?= 6
+synth:
+> @mkdir -p build
+> yosys -q -l build/synth_xc7.log -p "read_verilog -Irtl $(RTL); synth_xilinx -family xc7 -top eth_switch_4port -flatten; tee -o build/synth_xc7.stat stat"
+> yosys -q -l build/synth_ecp5.log -p "read_verilog -Irtl $(RTL); synth_ecp5 -top eth_switch_4port -flatten -json build/synth_ecp5.json; tee -o build/synth_ecp5.stat stat"
+> @for t in xc7 ecp5; do echo "=== $$t"; sed -n '/Number of cells/,$$p' build/synth_$$t.stat; done
+
+pnr: synth
+> nextpnr-ecp5 $(PNR_DEVICE) --package CABGA381 --speed $(PNR_SPEED) --json build/synth_ecp5.json --lpf syn/clocks.lpf --lpf-allow-unconstrained --router router2 --timing-allow-fail --threads 8 --seed 1 --report build/pnr_ecp5.json --log build/pnr_ecp5.log > /dev/null 2>&1
+> @grep -E 'TRELLIS_COMB|TRELLIS_FF:|TRELLIS_RAMW|DP16KD' build/pnr_ecp5.log | tail -4
+> @grep 'Max frequency for clock' build/pnr_ecp5.log | tail -9
 
 test: lint crc tx rx loop ingress table core smoke sim bugs
 

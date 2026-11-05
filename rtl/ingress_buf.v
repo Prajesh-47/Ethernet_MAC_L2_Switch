@@ -73,6 +73,21 @@ module ingress_buf #(
     wire        beat = s_tvalid;               // s_tready is always 1
     assign s_tready = 1'b1;
 
+    wire mem_we = beat && room && !ovf;
+    wire commit = beat && s_tlast && !s_tuser && !ovf && room && !q_full && (wcnt + 1 >= 14);
+
+    // ---------------- storage ----------------
+    // Written in their own block with no reset: an array assigned inside an
+    // async-reset process cannot be inferred as RAM (it becomes one flip-flop
+    // per bit). Nothing reads these before writing them: the pointers do reset.
+    always @(posedge clk) begin
+        if (mem_we) mem[wr_ptr[AW-1:0]] <= s_tdata;
+        if (commit) begin
+            q_len[q_wr[2:0]] <= wcnt + 1'b1;
+            q_dst[q_wr[2:0]] <= cap_dst;
+        end
+    end
+
     // ---------------- write side ----------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -83,8 +98,7 @@ module ingress_buf #(
             stat_drop <= 1'b0;
             if (learn_ack) learn_valid <= 1'b0;
             if (beat) begin
-                if (room && !ovf) begin
-                    mem[wr_ptr[AW-1:0]] <= s_tdata;
+                if (mem_we) begin
                     if (wcnt < 6)       cap_dst <= {cap_dst[39:0], s_tdata};
                     else if (wcnt < 12) cap_src <= {cap_src[39:0], s_tdata};
                 end
@@ -94,11 +108,9 @@ module ingress_buf #(
                     if (wcnt != 11'h7FF) wcnt <= wcnt + 1'b1;
                 end else begin
                     // end of frame: commit or rewind
-                    if (!s_tuser && !ovf && room && !q_full && (wcnt + 1 >= 14)) begin
+                    if (commit) begin
                         wr_ptr        <= wr_ptr + 1'b1;
                         frm_start     <= wr_ptr + 1'b1;
-                        q_len[q_wr[2:0]] <= wcnt + 1'b1;
-                        q_dst[q_wr[2:0]] <= cap_dst;
                         q_wr          <= q_wr + 1'b1;
                         // learn the source, unless it is a multicast address (invalid as a source)
                         if (!cap_src[40]) begin learn_valid <= 1'b1; learn_mac <= cap_src; end

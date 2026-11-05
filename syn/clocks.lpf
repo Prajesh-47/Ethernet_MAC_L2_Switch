@@ -1,0 +1,11 @@
+# Clock targets for out-of-board timing runs (make pnr). No pin locations yet:
+# I/O is left unconstrained until the design targets a specific board.
+FREQUENCY PORT "sys_clk" 156.25 MHz;
+FREQUENCY PORT "gmii_rx_clk[0]" 125 MHz;
+FREQUENCY PORT "gmii_rx_clk[1]" 125 MHz;
+FREQUENCY PORT "gmii_rx_clk[2]" 125 MHz;
+FREQUENCY PORT "gmii_rx_clk[3]" 125 MHz;
+FREQUENCY PORT "gmii_tx_clk[0]" 125 MHz;
+FREQUENCY PORT "gmii_tx_clk[1]" 125 MHz;
+FREQUENCY PORT "gmii_tx_clk[2]" 125 MHz;
+FREQUENCY PORT "gmii_tx_clk[3]" 125 MHz;
