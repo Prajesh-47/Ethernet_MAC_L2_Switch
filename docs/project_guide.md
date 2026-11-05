@@ -454,8 +454,9 @@ passed, but the first attempt at synthesis didn't even finish:
 | 3 | The MAC table did too much in one tick | Share comparators, three stages | 20% | 48.1 MHz |
 | 4 | An index calculation became a hardware multiplier | Write explicit muxes | 19% | 56.6 MHz |
 | 5 | The transmit FIFO's fill calculation ran straight into the arbiter | Store the "empty" flag in a flip-flop | 19% | 62.3 MHz |
+| 6 | A length check accidentally used 32-bit arithmetic | Rewrite it without the addition | 19% | 67.3 MHz |
 
-**What these numbers mean.** 62.3 MHz means a tick must last at least 16 ns. The minimum for `sys_clk`
+**What these numbers mean.** 67.3 MHz means a tick must last at least 14.8 ns. The minimum for `sys_clk`
 is 125 MHz, which is 8 ns. It can't go lower, because each port moves one byte per tick and bytes arrive
 at 125 MHz. So the slowest path must get more than twice as fast.
 
@@ -477,7 +478,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **In progress:**
 
-- Meeting FPGA timing. It routes, but `sys_clk` reaches 62.3 MHz of a required 125 MHz
+- Meeting FPGA timing. It routes, but `sys_clk` reaches 67.3 MHz of a required 125 MHz
 
 **Not done, so it can't yet connect to a real network:**
 
@@ -585,7 +586,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
-Simulation ignores real delays. The slowest path takes 16 ns, but the clock needs a tick every 8 ns.
+Simulation ignores real delays. The slowest path takes 14.8 ns, but the clock needs a tick every 8 ns.
 It also lacks the RGMII and MDIO support that real boards generally need.
 </details>
 

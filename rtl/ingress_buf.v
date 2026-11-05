@@ -80,7 +80,7 @@ module ingress_buf #(
     assign s_tready = 1'b1;
 
     wire mem_we = beat && room && !ovf;
-    wire commit = beat && s_tlast && !s_tuser && !ovf && room && !q_full && (wcnt + 1 >= 14);
+    wire commit = beat && s_tlast && !s_tuser && !ovf && room && !q_full && (wcnt >= 13);    // this byte is number wcnt + 1
 
     // ---------------- storage ----------------
     // Written in their own block with no reset: an array assigned inside an

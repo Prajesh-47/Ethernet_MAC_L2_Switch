@@ -11,13 +11,13 @@ ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), one placement seed, I/O pins un
 
 | Clock | Target | Achieved |
 | --- | --- | --- |
-| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **62.3 MHz** |
-| `gmii_rx_clk[3:0]` | 125 MHz | 116–125 MHz (one of the four passes) |
-| `gmii_tx_clk[3:0]` | 125 MHz | 95–113 MHz |
+| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **67.3 MHz** |
+| `gmii_rx_clk[3:0]` | 125 MHz | 104–127 MHz (one of the four passes) |
+| `gmii_tx_clk[3:0]` | 125 MHz | 94–110 MHz |
 
 | Resource | Used | Available |
 | --- | --- | --- |
-| Logic cells (`TRELLIS_COMB`) | 8,629 (19%) | 43,848 |
+| Logic cells (`TRELLIS_COMB`) | 8,467 (19%) | 43,848 |
 | Flip-flops | 3,180 (7%) | 43,848 |
 | Block RAM (`DP16KD`) | 8 (7%) | 108 |
 | Distributed RAM write ports | 120 (2%) | 5,481 |
@@ -52,6 +52,7 @@ Each row is post-route unless marked otherwise. All rows use the same device and
 | Share one comparator bank in the MAC table | 9,102 (20%) | 48.1 MHz | learn arbiter through an inferred multiplier |
 | Replace the multiplier with explicit muxes | 8,636 (19%) | 56.6 MHz | TX FIFO fill level through the egress arbiter |
 | Register the TX FIFO empty flag | 8,629 (19%) | 62.3 MHz | ingress commit decision, through a 32-bit carry chain |
+| Simplify the ingress length check | 8,467 (19%) | 67.3 MHz | queue read through the destination mask and grant logic to `own_v` |
 
 ### Memory written in an async-reset block
 
@@ -125,6 +126,15 @@ The flag can stay low a cycle too long, which only delays a grant, but it never 
 writer's view of the FIFO holds data. `tb_mac_loop` now checks that rule on every clock, and that the
 flag really does rise when idle.
 
+### Ingress length check (`rtl/ingress_buf.v`)
+
+`wcnt + 1 >= 14` widened to 32 bits because the literal `1` is 32 bits, which built a long carry chain.
+`wcnt >= 13` gives the same answer for every value. Congestion-mode results stayed identical, as expected.
+
+The GMII clocks moved in both directions after this change, though nothing in those domains changed
+(for example, `gmii_rx_clk[0]` went from 125 to 104 MHz). Treat small differences between single-seed
+runs as placement variation.
+
 ## Where the time goes now
 
 Routing is about 75% of each path below. Reducing logic levels should also reduce routing, because
@@ -132,25 +142,22 @@ fewer long nets span the device.
 
 | Clock | Slowest path | Delay | Logic / routing |
 | --- | --- | --- | --- |
-| `sys_clk` | `u_ib.wcnt` -> `wcnt + 1 >= 14` -> `commit` -> `learn_mac` enable | 16.1 ns | 4.2 / 11.9 ns |
-| `gmii_tx_clk[1]` | `u_rptr.rbin` -> FIFO memory read -> CRC update -> `u_tx.crc` | 9.4 ns | 1.9 / 7.5 ns |
-| `gmii_rx_clk[0]` | `rx_rst_n` -> `wbin_next` -> `wgray_next` -> `wfull_next` | 8.0 ns | 2.7 / 5.3 ns |
+| `sys_clk` | `q_rd` -> `q_dst` read -> `mask` -> `req`/`gnt`/`start` -> `own_v` | 14.8 ns | 4.0 / 10.8 ns |
+| `gmii_tx_clk[3]` | `u_tx.st` -> `s_tready` -> FIFO read pointer -> `rempty_next` | 10.6 ns | 3.0 / 7.6 ns |
+| `gmii_rx_clk[0]` | `rx_rst_n` -> FIFO write pointer -> `wfull_next` | 9.6 ns | 2.7 / 6.9 ns |
 
-These are examples of each kind of path, not always the worst port: `gmii_tx_clk[2]` is the slowest
-TX clock, at 94.9 MHz. The worst path varies by port because placement differs.
+The GMII paths shown are the slowest clock of each direction in this run. The worst path can differ by
+port because placement differs.
 
 ## Next steps
 
 In order:
 
-1. **Simplify the ingress commit check** in `rtl/ingress_buf.v`. In `wcnt + 1 >= 14`, the literal `1`
-   is 32 bits wide, so this builds a long carry chain. `wcnt >= 13` should give the same answer with
-   far less logic. Then split `commit` from its large fan-out if it is still slow.
-2. **Register the grant decision** in `rtl/switch_core.v`, so `req` -> `gnt` -> `start` -> `own_v`
+1. **Register the grant decision** in `rtl/switch_core.v`, so `req` -> `gnt` -> `start` -> `own_v`
    is not one long path. Keep the shared round-robin pointer, because it is what prevents deadlock.
-3. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
+2. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
    `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
-4. **Try more seeds** with `--seed` once the results are close. One seed says little about margin.
+3. **Try more seeds** with `--seed` once the results are close. One seed says little about margin.
 
 ## Clock targets
 
