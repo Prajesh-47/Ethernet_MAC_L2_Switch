@@ -189,6 +189,32 @@ Run on the design above, with `nextpnr-ecp5 --seed N`:
   MHz for each of seeds 1-3. Both are far out of reach, so this says nothing about how the tool behaves
   near its target.
 
+## Speed grade and I/O pin experiments
+
+Why is routing so slow? These runs tested two explanations on the same RTL (`8a47904`), with seeds 1-3.
+`sys_clk` needs 125 MHz, and the GMII clocks need 125 MHz.
+
+| Build | `sys_clk` | RX clocks | TX clocks |
+| --- | --- | --- | --- |
+| Speed grade 6, normal pins | 69–73 MHz | 93–131 MHz | 84–112 MHz |
+| Speed grade 6, 23 pins | 71–74 MHz | 95–133 MHz | 73–109 MHz |
+| **Speed grade 8, normal pins** | **92–97 MHz** | **149–165 MHz** | **121–144 MHz** |
+| Speed grade 8, 23 pins | 91–102 MHz | 137–170 MHz | 111–146 MHz |
+
+The "23 pins" builds used a temporary wrapper that drove the switch from flip-flop chains, one per
+clock domain, instead of 118 pins. It is not in the repo.
+
+- **Unconstrained pins are not the cause.** Removing nearly all of them changed little.
+- **Speed grade matters a lot.** It gains about 30% on `sys_clk` and takes the GMII clocks to nearly
+  passing or better. It does not reach 125 MHz on `sys_clk` by itself. Note that speed grade means a
+  different physical chip.
+- **The reason routing is so long is still not fully known.** Two kinds of path stand out at speed
+  grade 8, both of which span ports:
+  - **Crossbar:** `pf_cnt` in one port's ingress buffer through to `wfull` in another port's TX FIFO. It
+    appears to run through the core and into the FIFO's write pointer logic in a single cycle.
+  - **Reset:** paths from the synchronized `rst_n` to logic in several ports, with 1.5 ns of logic and
+    about 9 ns of routing.
+
 ## Where the time goes now
 
 Routing is 75-85% of each path below. These paths have only 1.4-3.1 ns of logic, so removing logic levels
@@ -207,11 +233,17 @@ port because placement differs.
 
 In order:
 
-1. **Find out why routing dominates, before more RTL changes.** Two cheap experiments: a faster speed
-   grade (`--speed 8`), and a build without 118 unconstrained I/O pins pulling logic apart.
-2. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
+No FPGA board is available, so the [roadmap](roadmap.md) sets a limit: stop after steps 2 and 3, even if
+`sys_clk` is short of 125 MHz.
+
+1. **Make ECP5-45 speed grade 8 the reference device**, and make it the `make pnr` default.
+2. **Register the crossbar output**, between `switch_core` and the TX FIFOs, without changing `rtl/cdc/`.
+   This needs a two-entry buffer to keep full throughput, and the fork and empty-flag rules must still hold.
+3. **Look at the reset network.** Check why reset appears as a data path, and whether it should use a
+   global net or per-port synchronizers.
+4. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
    `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
-3. **Add multi-seed runs to `make pnr`**, and report the worst and typical result.
+5. **Add multi-seed runs to `make pnr`**, and report the worst and typical result.
 
 ## Clock targets
 
@@ -221,8 +253,8 @@ In order:
 - 125 MHz is the sensible target for ECP5 at speed grade 6. `tb_mac_loop` passes at 125 MHz, but the
   whole-switch tests (`tb_switch`, `tb_switch_smoke`) only run at 156.25 MHz. Add a 125 MHz run before
   relying on that target.
-- If ECP5 at speed grade 6 cannot reach 125 MHz, the fallback is a faster speed grade or a different
-  FPGA. The choice of board is still open.
+- No board is available, so there is no required chip. The reference device for these numbers will be
+  ECP5-45 at speed grade 8, and results are post-route estimates, not proof it runs on hardware.
 
 ## Constraints on this work
 
@@ -230,7 +262,7 @@ In order:
   there first and re-run the proofs, as `rtl/cdc/README.md` says.
 - `syn/clocks.lpf` sets clock frequencies only. Paths between clock domains appear in the log as
   cross-domain reports, not as failures of these targets.
-- No I/O timing is constrained yet. That needs a real board and its pin assignments.
+- No I/O timing is constrained, and none is planned: that needs a real board and its pin assignments.
 
 ## Tooling notes
 

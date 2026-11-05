@@ -193,7 +193,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 
 - [Project guide](docs/project_guide.md): the whole project explained from the start, with no Verilog needed
 - [FPGA timing log](docs/fpga_timing.md): current area and Fmax, how to reproduce them, what each change did and why, and the next timing fixes
-- [Roadmap](docs/roadmap.md): planned phases from timing closure to real traffic, and optional features
+- [Roadmap](docs/roadmap.md): planned phases without physical hardware, from timing and performance to real traffic in simulation, formal proofs and features
 
 ## Limitations
 
@@ -205,7 +205,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - **No VLANs, no pause frames, no jumbo frames.** Frames over 1518 bytes are dropped.
 - **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
-- **Does not meet timing yet, and has not run on hardware.** After place-and-route on an ECP5-45
+- **Does not meet timing yet, and has never run on hardware** (no board is planned). After place-and-route on an ECP5-45
   (speed grade 6, I/O pins unconstrained), `sys_clk` reaches 69–73 MHz across three seeds against a
   156.25 MHz target, and the GMII clocks reach 84–131 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
 - Simulation verifies the logic around the synchronizers, not metastability itself.

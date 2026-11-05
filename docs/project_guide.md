@@ -448,8 +448,9 @@ Verilog -> synthesis -> place and route -> timing report -> bitstream -> load on
 - **Place and route** decides where each part goes on the chip and which wires connect them.
 - **Timing report** gives the real delay of every path, and so the Fmax.
 
-Our target device is an ECP5-45, chosen because its open-source tools run on this machine. **The board
-is still undecided, so this may change.**
+Our reference device is an ECP5-45, chosen because its open-source tools run on this machine. **No board is
+planned for this project**, so these results are estimates of what the design could do on a chip, not proof
+that it does.
 
 **Why this exposed new problems.** A simulator doesn't care how big or slow a circuit is. Every test
 passed, but the first attempt at synthesis didn't even finish:
@@ -479,6 +480,10 @@ they look.
 **Wires are now the main delay.** In the slowest paths, logic takes 1.4-3.1 ns and routing takes 8-10 ns.
 That points away from the code's logic and towards how the design sits on the chip.
 
+**The chip itself matters.** FPGAs of the same family come in speed grades. On identical code, the fastest
+ECP5 grade reaches 92-97 MHz, against 69-73 MHz for the slowest. That's a bigger jump than the last several
+code fixes together. No board is planned for this project, so the fastest grade will be the reference for reported numbers.
+
 Full details are in the [timing log](fpga_timing.md).
 
 ---
@@ -496,14 +501,18 @@ Full details are in the [timing log](fpga_timing.md).
 
 - Meeting FPGA timing. It routes, but `sys_clk` reaches about 70 MHz of a required 125 MHz
 
-**Not done, so it can't yet connect to a real network:**
+**Out of scope, because no FPGA board is available:**
 
-- It has never run on hardware.
-- Only GMII is supported, while many boards use RGMII.
-- There's no MDIO, which is how a PHY is configured.
-- Only gigabit works, with no 10/100.
-- There's no aging, VLAN support, pause frames or loop protection.
+- It has never run on hardware, and isn't planned to.
+- There's no RGMII, which many boards use, and no MDIO, which is how a PHY is configured.
+- There's no 10/100 support for slower link partners.
+
+**Not done yet, and planned in simulation:**
+
 - Throughput and latency have never been measured.
+- Real network traffic hasn't been passed through the simulated switch.
+- Key properties aren't formally proven yet.
+- There's no aging, VLAN support, pause frames or loop protection.
 
 The [roadmap](roadmap.md) sets out the order for all of this.
 
@@ -603,7 +612,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
 Simulation ignores real delays. The slowest path takes 13.6 ns, but the clock needs a tick every 8 ns.
-It also lacks the RGMII and MDIO support that real boards generally need.
+It also lacks the RGMII and MDIO support that real boards generally need, though those are out of scope because no board is planned.
 </details>
 
 ---
