@@ -26,11 +26,11 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | MAC loopback across clocks | 211 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
-| Switch, congestion mode (100% load) | 37–45% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 6,367 cycles (limit 20,000) |
+| Switch, congestion mode (100% load) | 37–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 7,442 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
-| FPGA (ECP5-45, speed 6, one seed) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 56.6 MHz against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
+| FPGA (ECP5-45, speed 6, one seed) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 62.3 MHz against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
 
 ## Waveform
 
@@ -198,7 +198,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 ## Limitations
 
 - **Head-of-line blocking.** One input queue per port: a frame waiting for a busy output blocks
-  everything behind it, even frames for idle outputs. That is a large part of the 37–45% drop
+  everything behind it, even frames for idle outputs. That is a large part of the 37–44% drop
   rate at 100% load. Virtual output queues would fix it.
 - **Small, simple table.** 16 entries, no aging timer (a real switch ages entries out after ~300 s),
   oldest-first replacement.
@@ -206,8 +206,8 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
 - **Does not meet timing yet, and has not run on hardware.** After place-and-route on an ECP5-45
-  (speed grade 6, one seed, I/O pins unconstrained), `sys_clk` reaches 56.6 MHz against a 156.25 MHz
-  target and the GMII clocks reach 97–120 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
+  (speed grade 6, one seed, I/O pins unconstrained), `sys_clk` reaches 62.3 MHz against a 156.25 MHz
+  target and the GMII clocks reach 95–125 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
 - Simulation verifies the logic around the synchronizers, not metastability itself.
 
 ## License

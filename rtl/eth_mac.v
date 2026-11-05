@@ -32,7 +32,7 @@ module eth_mac (
     input  wire       tx_tvalid,
     input  wire       tx_tlast,
     output wire       tx_tready,
-    output wire       tx_fifo_empty,   // sys-side view: egress FIFO holds nothing
+    output reg        tx_fifo_empty,   // sys-side view: egress FIFO holds nothing (see below)
     // status (in their own clock domains)
     output wire       stat_rx_good,
     output wire       stat_rx_bad,
@@ -69,7 +69,17 @@ module eth_mac (
         .m_aclk(gmii_tx_clk), .m_aresetn(sys_rst_n),
         .m_axis_tdata({t_last, t_data}), .m_axis_tvalid(t_valid),
         .m_axis_tready(t_ready), .m_almost_empty());
-    assign tx_fifo_empty = (tx_fill == 6'd0);
+
+    // Registered, because tx_fill is a Gray decode plus a subtraction and this
+    // flag feeds the switch's arbiter. A write clears it straight away: it may
+    // say "not empty" a cycle too long, which is safe, but it never says "empty"
+    // while the FIFO holds data (the switch relies on that to grant a port).
+    wire sys_rst_sync_n;
+    reset_sync u_sysr (.clk(sys_clk), .rst_n_in(sys_rst_n), .rst_n_out(sys_rst_sync_n));
+    always @(posedge sys_clk or negedge sys_rst_sync_n) begin
+        if (!sys_rst_sync_n) tx_fifo_empty <= 1'b0;
+        else                 tx_fifo_empty <= (tx_fill == 6'd0) && !(tx_tvalid && tx_tready);
+    end
 
     eth_mac_tx u_tx (
         .clk(gmii_tx_clk), .rst_n(tx_rst_n),

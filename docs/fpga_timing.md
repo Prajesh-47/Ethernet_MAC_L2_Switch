@@ -11,18 +11,18 @@ ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), one placement seed, I/O pins un
 
 | Clock | Target | Achieved |
 | --- | --- | --- |
-| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **56.6 MHz** |
-| `gmii_rx_clk[3:0]` | 125 MHz | 109–120 MHz |
-| `gmii_tx_clk[3:0]` | 125 MHz | 97–113 MHz |
+| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **62.3 MHz** |
+| `gmii_rx_clk[3:0]` | 125 MHz | 116–125 MHz (one of the four passes) |
+| `gmii_tx_clk[3:0]` | 125 MHz | 95–113 MHz |
 
 | Resource | Used | Available |
 | --- | --- | --- |
-| Logic cells (`TRELLIS_COMB`) | 8,636 (19%) | 43,848 |
-| Flip-flops | 3,176 (7%) | 43,848 |
+| Logic cells (`TRELLIS_COMB`) | 8,629 (19%) | 43,848 |
+| Flip-flops | 3,180 (7%) | 43,848 |
 | Block RAM (`DP16KD`) | 8 (7%) | 108 |
 | Distributed RAM write ports | 120 (2%) | 5,481 |
 
-Xilinx 7-series has synthesis results only (1,944 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
+Xilinx 7-series has synthesis results only (1,948 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
 flow here has no Xilinx place-and-route, so there are no Xilinx timing numbers.
 
 ## Reproducing the numbers
@@ -51,6 +51,7 @@ Each row is post-route unless marked otherwise. All rows use the same device and
 | Move it to block RAM with a prefetch FIFO | 15,268 (34%) | 24.9 MHz | MAC table learn logic, about 40 ns |
 | Share one comparator bank in the MAC table | 9,102 (20%) | 48.1 MHz | learn arbiter through an inferred multiplier |
 | Replace the multiplier with explicit muxes | 8,636 (19%) | 56.6 MHz | TX FIFO fill level through the egress arbiter |
+| Register the TX FIFO empty flag | 8,629 (19%) | 62.3 MHz | ingress commit decision, through a 32-bit carry chain |
 
 ### Memory written in an async-reset block
 
@@ -110,24 +111,41 @@ learn grant. A result may lag the table by up to 12 cycles, which the test allow
 costing 3.9 ns. Explicit `case` muxes removed it. Use a `case` for variable indexing by a width that
 is not a power of two. Multiplying by a power of two is only a shift, so `8*owner[e]` is fine.
 
+### Registered TX FIFO empty flag (`rtl/eth_mac.v`)
+
+The flag came from a Gray-to-binary decode and a subtraction, then fed straight into the arbiter. It is
+now a flip-flop. Simply delaying it would be unsafe, because the arbiter uses it to prove a port is
+idle: a late flag could still say "empty" just after a write. So any write also clears it directly:
+
+```verilog
+tx_fifo_empty <= (tx_fill == 0) && !(tx_tvalid && tx_tready);
+```
+
+The flag can stay low a cycle too long, which only delays a grant, but it never reads high while the
+writer's view of the FIFO holds data. `tb_mac_loop` now checks that rule on every clock, and that the
+flag really does rise when idle.
+
 ## Where the time goes now
 
-Routing is about 70% of each path below. Reducing logic levels should also reduce routing, because
+Routing is about 75% of each path below. Reducing logic levels should also reduce routing, because
 fewer long nets span the device.
 
 | Clock | Slowest path | Delay | Logic / routing |
 | --- | --- | --- | --- |
-| `sys_clk` | `u_sync_r2w.q2` -> Gray-to-binary -> `tx_fill` subtract -> `tx_empty` -> `req`/`gnt`/`start` -> `own_v` | 17.7 ns | 5.3 / 12.4 ns |
-| `gmii_tx_clk[0]` | `u_tx.nbytes` compare -> TX state logic -> `u_tx.cnt` enable | 8.8 ns | 3.2 / 5.6 ns |
-| `gmii_rx_clk[0]` | `u_rx.m_tvalid` -> `wbin_next` -> `wgray_next` -> `wfull_next` | 9.1 ns | 2.5 / 6.6 ns |
+| `sys_clk` | `u_ib.wcnt` -> `wcnt + 1 >= 14` -> `commit` -> `learn_mac` enable | 16.1 ns | 4.2 / 11.9 ns |
+| `gmii_tx_clk[1]` | `u_rptr.rbin` -> FIFO memory read -> CRC update -> `u_tx.crc` | 9.4 ns | 1.9 / 7.5 ns |
+| `gmii_rx_clk[0]` | `rx_rst_n` -> `wbin_next` -> `wgray_next` -> `wfull_next` | 8.0 ns | 2.7 / 5.3 ns |
+
+These are examples of each kind of path, not always the worst port: `gmii_tx_clk[2]` is the slowest
+TX clock, at 94.9 MHz. The worst path varies by port because placement differs.
 
 ## Next steps
 
 In order:
 
-1. **Register the TX FIFO empty flag** in `rtl/eth_mac.v`. This splits the current slowest path.
-   Check first: `tx_empty` is what proves an egress is idle, so a flag one cycle late must not allow
-   a grant while the previous frame is still in the FIFO.
+1. **Simplify the ingress commit check** in `rtl/ingress_buf.v`. In `wcnt + 1 >= 14`, the literal `1`
+   is 32 bits wide, so this builds a long carry chain. `wcnt >= 13` should give the same answer with
+   far less logic. Then split `commit` from its large fan-out if it is still slow.
 2. **Register the grant decision** in `rtl/switch_core.v`, so `req` -> `gnt` -> `start` -> `own_v`
    is not one long path. Keep the shared round-robin pointer, because it is what prevents deadlock.
 3. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
@@ -186,4 +204,6 @@ These bugs were injected by hand, once each, and are **not** part of `make bugs`
 | Result never refreshed after the first answer (hit, then port) | `tb_mac_table` | caught, after strengthening the test |
 | Core ignores `lk_valid` | `tb_switch_core` | caught |
 | No `head_valid` gap after a pop | `tb_switch` | caught |
+| TX empty flag not cleared by a write | `tb_mac_loop` | caught |
+| TX empty flag never rises | `tb_mac_loop` | caught |
 | RAM read on every cycle, not only on `rd_en` | `tb_ingress_buf` | passes: no behaviour change, since the extra value is never used |

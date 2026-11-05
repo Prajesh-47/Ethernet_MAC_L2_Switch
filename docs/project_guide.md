@@ -271,7 +271,9 @@ proofs. Change them in that repo first.
 ### MAC wrapper (`rtl/eth_mac.v`)
 
 Connects the receive MAC, transmit MAC and both FIFOs into one port. It also tells the switch when the
-transmit FIFO is empty, which is how the core knows the output is idle.
+transmit FIFO is empty, which is how the core knows the output is idle. That flag is stored in a
+flip-flop for timing, and a write clears it straight away. So it can be a tick late saying "empty", but
+it never says "empty" while the FIFO holds data.
 
 ### Ingress buffer (`rtl/ingress_buf.v`)
 
@@ -366,7 +368,7 @@ MHz. So a lock-stepped flood can't starve one copy mid-frame. The cost is a smal
 
 **Head-of-line blocking.** Each input has one queue. If the front frame waits for a busy output, frames
 behind it wait too, even if their outputs are idle. It's like a car waiting to turn right holding up
-everyone behind it who's going straight. This is a large part of why 37-45% of copies are dropped at
+everyone behind it who's going straight. This is a large part of why 37-44% of copies are dropped at
 100% load. Virtual output queues would fix it, and they're on the roadmap.
 
 ### Top level (`rtl/eth_switch_4port.v`)
@@ -451,8 +453,9 @@ passed, but the first attempt at synthesis didn't even finish:
 | 2 | Memory was built from LUTs | Use block RAM, add a prefetch FIFO | 34% | 24.9 MHz |
 | 3 | The MAC table did too much in one tick | Share comparators, three stages | 20% | 48.1 MHz |
 | 4 | An index calculation became a hardware multiplier | Write explicit muxes | 19% | 56.6 MHz |
+| 5 | The transmit FIFO's fill calculation ran straight into the arbiter | Store the "empty" flag in a flip-flop | 19% | 62.3 MHz |
 
-**What these numbers mean.** 56.6 MHz means a tick must last at least 17.7 ns. The minimum for `sys_clk`
+**What these numbers mean.** 62.3 MHz means a tick must last at least 16 ns. The minimum for `sys_clk`
 is 125 MHz, which is 8 ns. It can't go lower, because each port moves one byte per tick and bytes arrive
 at 125 MHz. So the slowest path must get more than twice as fast.
 
@@ -474,7 +477,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **In progress:**
 
-- Meeting FPGA timing. It routes, but `sys_clk` reaches 56.6 MHz of a required 125 MHz
+- Meeting FPGA timing. It routes, but `sys_clk` reaches 62.3 MHz of a required 125 MHz
 
 **Not done, so it can't yet connect to a real network:**
 
@@ -582,7 +585,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
-Simulation ignores real delays. The slowest path takes 17.7 ns, but the clock needs a tick every 8 ns.
+Simulation ignores real delays. The slowest path takes 16 ns, but the clock needs a tick every 8 ns.
 It also lacks the RGMII and MDIO support that real boards generally need.
 </details>
 

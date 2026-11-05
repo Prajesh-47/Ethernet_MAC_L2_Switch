@@ -75,6 +75,17 @@ module tb_mac_loop;
     end
     always @(posedge gclk) if (s_und) n_underrun++;
 
+    // The switch grants a port on this flag, so it must never claim "empty" while
+    // the writer's view of the FIFO holds data. It must also really rise when idle.
+    int n_empty = 0, n_empty_bad = 0;
+    always @(posedge sys_clk) if (tx_empty) begin
+        n_empty++;
+        if (dut.tx_fill != 0) begin
+            n_empty_bad++; errors++;
+            if (n_empty_bad < 5) $display("ERROR: tx_fifo_empty high with fill %0d at %0t", dut.tx_fill, $time);
+        end
+    end
+
     // ---------------- driver ----------------
     task automatic send(int len);
         byte unsigned f[$]; frm x = new();
@@ -99,6 +110,7 @@ module tb_mac_loop;
         repeat (40000) @(posedge sys_clk);
 
         if (ngot != nframes) begin errors++; $display("ERROR: sent %0d frames, %0d came back", nframes, ngot); end
+        if (n_empty == 0) begin errors++; $display("ERROR: tx_fifo_empty never rose"); end
         if (!slow_mode && (n_flagged != 0 || n_underrun != 0)) begin
             errors++; $display("ERROR: %0d frames flagged bad and %0d underrun cycles in normal mode", n_flagged, n_underrun);
         end
