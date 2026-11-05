@@ -10,6 +10,8 @@
 //   scoreboard  : every frame seen on egress e must be the next expected frame
 //                 from its ingress to e; at the end every queue must be empty
 //   coverage    : explicit bins (Verilator 5.020 has no covergroups)
+//   protocol    : AXI-Stream check on the internal core -> TX FIFO links
+//   liveness    : every requesting ingress starts within 20000 cycles
 //
 // Phases
 //   1 learning : every station sends one broadcast -> table learns 12 stations
@@ -23,7 +25,8 @@
 // Plusargs: +N=<frames per port> (default 300)  +LOAD=<% of line rate> (default 30)
 //   LOAD <= 30 : no-drop mode -- every expected copy must arrive
 //   LOAD  > 30 : congestion mode (milestone 8) -- drops allowed, but what does
-//                arrive must be intact and in order, and nobody may starve
+//                arrive must be intact and in order, nobody may starve, and at
+//                least 25% of copies must get through (sanity floor)
 // -----------------------------------------------------------------------------
 `timescale 1ns/1ps
 module tb_switch;
@@ -261,6 +264,26 @@ module tb_switch;
     end
     always @(posedge gtx_clk) if (|s_underrun) begin errors++; $display("ERROR: TX underrun"); end
 
+    // INTERNAL PROTOCOL CHECK: AXI-Stream on the 4 core -> TX FIFO links.
+    // End-to-end checks cannot see a valid that drops before ready (the FIFO
+    // happens to tolerate it), so watch the interface itself. Note: in THIS
+    // system every copy of a frame starts from an empty FIFO and drains on the
+    // same clock, so all destinations' tready fall on the same edge and
+    // BUG_FORK_GATED_VALID never fires here -- it is latent. Only
+    // tb_switch_core.sv, with independent random tready per port, exposes it.
+    logic [3:0] axi_pv = 0, axi_pr = 0, axi_pl = 0; logic [31:0] axi_pd = 0;
+    int n_axi = 0;
+    always @(posedge sys_clk) if (rst_n) begin
+        for (int e = 0; e < 4; e++) begin
+            if (axi_pv[e] && !axi_pr[e] &&
+                (!dut.tx_v[e] || dut.tx_d[8*e +: 8] != axi_pd[8*e +: 8] || dut.tx_l[e] != axi_pl[e])) begin
+                n_axi++; errors++;
+                if (n_axi <= 3) $display("ERROR: core -> TX FIFO %0d: tvalid/tdata changed before tready (AXI-Stream)", e);
+            end
+        end
+        axi_pv = dut.tx_v; axi_pr = dut.tx_r; axi_pl = dut.tx_l; axi_pd = dut.tx_d;
+    end
+
     // LIVENESS: an ingress port that keeps requesting must start within a
     // bounded time. Worst legitimate wait: its destinations finish a max-size
     // frame (~1538 byte times at 125 MHz ~ 2,000 sys cycles) and drain their
@@ -370,6 +393,13 @@ module tb_switch;
         report("end");
         $display("longest wait for grants: %0d sys cycles (liveness limit 20000)", max_wait);
         $display("frames expected %0d, received %0d, errors %0d", n_expected, n_received, errors);
+        // Congestion mode allows drops, so a switch that dropped nearly
+        // everything would otherwise pass. Measured delivery is 41-46%;
+        // the floor is a sanity check, not a performance spec.
+        if (LOAD > 30 && n_received * 100 < n_expected * 25) begin
+            errors++; $display("ERROR: only %0d%% of copies delivered under congestion (sanity floor 25%%)", n_received * 100 / n_expected);
+        end
+        $display("AXI-Stream violations on core -> TX FIFO links: %0d", n_axi);
         if (errors == 0 && (LOAD > 30 || n_received == n_expected)) $display("RESULT: PASS"); else $display("RESULT: FAIL");
         $finish;
     end

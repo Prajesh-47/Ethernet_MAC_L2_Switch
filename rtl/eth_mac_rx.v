@@ -18,6 +18,7 @@
 //   * length > 1518 bytes incl. FCS    (oversized, no VLAN support)
 //   * rx_er seen during the frame
 //   * the output FIFO overflowed       (GMII cannot be back-pressured)
+// Test-only bug switch: +define+BUG_RX_NO_CRC (CRC errors are ignored).
 // -----------------------------------------------------------------------------
 `default_nettype none
 module eth_mac_rx (
@@ -44,6 +45,11 @@ module eth_mac_rx (
 
     reg [1:0]  st;
     reg [31:0] crc;
+`ifndef BUG_RX_NO_CRC
+    wire        crc_ok = (crc == 32'hDEBB20E3);    // residue of a frame + its correct FCS
+`else
+    wire        crc_ok = 1'b1;                     // BUG: CRC errors are ignored
+`endif
     reg [10:0] len;                 // bytes after SFD, incl. FCS (saturates)
     reg [39:0] dly;                 // 5-byte delay line, newest in [7:0]
     reg        saw_er, ovf;
@@ -85,9 +91,9 @@ module eth_mac_rx (
                         m_tdata  <= (len >= 5) ? dly[39:32] : 8'h00;
                         m_tvalid <= 1'b1;
                         m_tlast  <= 1'b1;
-                        m_tuser  <= (crc != 32'hDEBB20E3) || (len < MIN_LEN) || (len > MAX_LEN)
+                        m_tuser  <= !crc_ok || (len < MIN_LEN) || (len > MAX_LEN)
                                     || saw_er || ovf || lost;
-                        if ((crc == 32'hDEBB20E3) && (len >= MIN_LEN) && (len <= MAX_LEN)
+                        if (crc_ok && (len >= MIN_LEN) && (len <= MAX_LEN)
                             && !saw_er && !ovf && !lost) stat_good <= 1'b1;
                         else stat_bad <= 1'b1;
                         st <= S_DRAIN;

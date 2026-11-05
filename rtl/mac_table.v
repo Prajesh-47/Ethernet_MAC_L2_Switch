@@ -6,8 +6,8 @@
 //     address already present -> update its port (a station moved)
 //     not present              -> write it into the next victim slot
 //                                 (round-robin replacement)
-// Test-only bug switch: +define+BUG_NO_MOVE (a station that moves keeps its
-// old port).
+// Test-only bug switches: +define+BUG_NO_MOVE (a station that moves keeps its
+// old port), +define+BUG_NO_LEARN (nothing is ever learned).
 // No aging timer: entries live until replaced. (A real switch ages entries
 // out after ~300 s so a silent station's slot can be reused -- see guide.)
 // -----------------------------------------------------------------------------
@@ -72,7 +72,11 @@ module mac_table #(
             for (z = 0; z < N; z = z + 1) begin v[z] <= 1'b0; mac[z] <= 48'b0; prt[z] <= 2'b0; end
             victim <= 0; rr <= 0;
         end else begin
+`ifndef BUG_NO_LEARN
             if (any) begin
+`else
+            if (1'b0) begin                    // BUG: nothing is ever learned
+`endif
                 rr <= sel + 1'b1;
 `ifndef BUG_NO_MOVE
                 if (found) prt[fidx] <= sel;          // station moved: update its port
