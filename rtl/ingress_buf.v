@@ -18,8 +18,12 @@
 //
 // Test-only bug switch: +define+BUG_NO_REWIND (a dropped frame's bytes are
 // left in the buffer).
-// Memory read is combinational (LUT RAM). With block RAM's registered read
-// you would add a 2-entry skid buffer on out_t* -- see the guide.
+//
+// The frame memory has a registered read so it maps to block RAM. A small
+// prefetch FIFO sits between it and out_t*, so out_tready never reaches the
+// RAM address. Fetching starts when xfer rises: the first byte appears 3 clocks
+// later, then the frame streams with no gaps. A byte's space is released when
+// it is delivered on out_t*, not when it is fetched.
 // -----------------------------------------------------------------------------
 `default_nettype none
 module ingress_buf #(
@@ -56,7 +60,7 @@ module ingress_buf #(
     localparam QD = 8;                         // descriptor queue depth
 
     reg [7:0]  mem [0:DEPTH-1];
-    reg [AW:0] wr_ptr, rd_ptr, frm_start;
+    reg [AW:0] wr_ptr, rd_ptr, frm_start;      // rd_ptr: next byte to DELIVER
     reg [10:0] wcnt;                           // bytes of the frame being written
     reg [47:0] cap_dst, cap_src;
     reg        ovf;
@@ -127,25 +131,66 @@ module ingress_buf #(
     end
 
     // ---------------- read side ----------------
-    reg [10:0] rcnt;
+    localparam [1:0] F_IDLE = 2'd0, F_FETCH = 2'd1, F_DRAIN = 2'd2;
+    reg [1:0]  f_state;
+    reg [AW:0] fetch_ptr;                      // next byte to read from mem
+    reg [10:0] f_cnt;                          // bytes of the head frame fetched so far
+    reg [7:0]  rd_data;                        // block RAM output register
+    reg        rd_valid, rd_last;
+    reg [8:0]  pf_mem [0:3];                   // prefetch FIFO: {last, data}
+    reg [1:0]  pf_wp, pf_rp;
+    reg [2:0]  pf_cnt;
+
     assign head_valid = !q_empty;
     assign head_len   = q_len[q_rd[2:0]];
     assign head_dst   = q_dst[q_rd[2:0]];
-    assign out_tvalid = xfer && head_valid;
-    assign out_tdata  = mem[rd_ptr[AW-1:0]];
-    assign out_tlast  = (rcnt == head_len - 1'b1);
+    assign out_tvalid = (pf_cnt != 3'd0);
+    assign {out_tlast, out_tdata} = pf_mem[pf_rp];
+
+    // Fetch only if the FIFO has room for this byte and the one still in the RAM.
+    wire [2:0] pf_used = pf_cnt + {2'b0, rd_valid};
+    wire       rd_en   = (f_state == F_FETCH) && (pf_used != 3'd4);
+    wire       f_last  = (f_cnt == head_len - 1'b1);
+    wire       pf_pop  = out_tvalid && out_tready;
+
+    always @(posedge clk) begin
+        if (rd_en)    rd_data       <= mem[fetch_ptr[AW-1:0]];
+        if (rd_valid) pf_mem[pf_wp] <= {rd_last, rd_data};
+    end
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            rd_ptr <= 0; rcnt <= 0; q_rd <= 0;
-        end else if (drop && head_valid) begin
-            rd_ptr <= rd_ptr + {{(AW-10){1'b0}}, head_len};
-            rcnt   <= 0;
-            q_rd   <= q_rd + 1'b1;
-        end else if (out_tvalid && out_tready) begin
-            rd_ptr <= rd_ptr + 1'b1;
-            if (out_tlast) begin rcnt <= 0; q_rd <= q_rd + 1'b1; end
-            else           rcnt <= rcnt + 1'b1;
+            f_state <= F_IDLE; fetch_ptr <= 0; f_cnt <= 0; rd_ptr <= 0; q_rd <= 0;
+            rd_valid <= 0; rd_last <= 0; pf_wp <= 0; pf_rp <= 0; pf_cnt <= 0;
+        end else begin
+            rd_valid <= rd_en;
+            if (rd_en)    rd_last <= f_last;
+            if (rd_valid) pf_wp   <= pf_wp + 1'b1;
+            if (pf_pop)   pf_rp   <= pf_rp + 1'b1;
+            pf_cnt <= pf_cnt + {2'b0, rd_valid} - {2'b0, pf_pop};
+
+            if (drop && head_valid) begin
+                rd_ptr    <= rd_ptr    + {{(AW-10){1'b0}}, head_len};
+                fetch_ptr <= fetch_ptr + {{(AW-10){1'b0}}, head_len};
+                q_rd      <= q_rd + 1'b1;
+            end else begin
+                if (f_state == F_IDLE && xfer && head_valid) begin
+                    f_state <= F_FETCH;
+                    f_cnt   <= 0;
+                end
+                if (rd_en) begin
+                    fetch_ptr <= fetch_ptr + 1'b1;
+                    f_cnt     <= f_cnt + 1'b1;
+                    if (f_last) f_state <= F_DRAIN;
+                end
+                if (pf_pop) begin
+                    rd_ptr <= rd_ptr + 1'b1;
+                    if (out_tlast) begin
+                        q_rd    <= q_rd + 1'b1;
+                        f_state <= F_IDLE;
+                    end
+                end
+            end
         end
     end
 endmodule

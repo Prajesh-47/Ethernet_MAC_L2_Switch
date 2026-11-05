@@ -118,6 +118,28 @@ module tb_ingress_buf;
 
     // ---------------- monitor ----------------
     byte unsigned got[$];
+    // out_t* rules: a stalled beat holds its value, a started frame has no gaps
+    // (the TX path relies on this to never underrun), and a frame starts promptly.
+    localparam MAX_START_WAIT = 3;
+    logic pv = 0, pl = 0; logic [7:0] pd = 0;
+    bit   in_frame = 0;
+    int   start_wait = 0, max_start_wait = 0;
+    always @(posedge clk) if (rst_n) begin
+        if (pv && !(out_tvalid && out_tdata == pd && out_tlast == pl)) begin
+            errors++; $display("ERROR: stalled out beat changed or dropped at %0t", $time);
+        end
+        if (in_frame && !out_tvalid) begin
+            errors++; $display("ERROR: gap inside an outgoing frame at %0t", $time);
+        end
+        if (xfer && !out_tvalid && !in_frame) begin
+            start_wait++;
+            if (start_wait > max_start_wait) max_start_wait = start_wait;
+            if (start_wait > MAX_START_WAIT) begin errors++; $display("ERROR: xfer waited %0d clocks for its first byte", start_wait); end
+        end else start_wait = 0;
+        pv = out_tvalid && !out_tready; pd = out_tdata; pl = out_tlast;
+        if (out_tvalid) in_frame = !(out_tready && out_tlast);
+    end
+
     always @(posedge clk) begin
         if (drop && head_valid) begin read_bytes += drop_len; popped_frames++; end
         if (out_tvalid && out_tready) begin
@@ -202,6 +224,7 @@ module tb_ingress_buf;
         $display("  rejected: bad %0d, short %0d, buffer full %0d, queue full %0d  (stat_drop %0d)",
                  n_drop_bad, n_drop_short, n_drop_full, n_drop_q, got_stat_drop);
         $display("  learn requests %0d (%0d multicast sources correctly not learned)", n_learn, n_mcast);
+        $display("  longest wait from xfer to first byte: %0d clocks (limit %0d)", max_start_wait, MAX_START_WAIT);
         if (errors == 0) $display("RESULT: PASS"); else $display("RESULT: FAIL (%0d errors)", errors);
         $finish;
     end
