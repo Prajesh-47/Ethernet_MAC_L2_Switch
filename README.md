@@ -26,11 +26,11 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | MAC loopback across clocks | 211 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
-| Switch, congestion mode (100% load) | 37–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 7,442 cycles (limit 20,000) |
+| Switch, congestion mode (100% load) | 36–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 6,139 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
-| FPGA (ECP5-45, speed 6, one seed) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 67.3 MHz against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
+| FPGA (ECP5-45, speed 6, one seed) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 70.4 MHz against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
 
 ## Waveform
 
@@ -116,7 +116,7 @@ a new one replaces the oldest entry.
 | in the table, the same port | nowhere (filtered: the station already heard it) |
 
 *Arbitration.* An output is free when nobody owns it and its TX FIFO is empty. An input waits for its
-table result (`lk_valid`), then starts only when it holds **every** port it needs, so a flood's copies
+table result (`lk_valid`), its destination set is stored for one cycle, and it then starts only when it holds **every** port it needs, so a flood's copies
 start together. All four output
 arbiters share **one** round-robin pointer: the top-priority input wins every free port it wants,
 so it always eventually gets its full set. With a pointer per output, input A could hold port 2
@@ -144,7 +144,7 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 | `tb_mac_loop` | both CDC crossings at 5 clock setups; when starved, damage is **flagged, never silent** | 211 frames per setup |
 | `tb_ingress_buf` | a predictive model of every keep/drop decision, incl. buffer filled to the exact last byte; output stable under back-pressure, no gaps inside a frame | 2,019 frames, every drop reason hit |
 | `tb_mac_table` | results vs a model, results follow the table, no stale result after an address change, oldest-first eviction, station moves, arbiter never starves anyone | 100,349 results checked, 1,011 evictions, longest waits 8 cycles (lookup) and 11 (learn) |
-| `tb_switch_core` | forwarding rules, waits for the table result, AXI-Stream on every output, start only into an empty FIFO, liveness | 5,240 / 5,240 copies, 0 AXI violations |
+| `tb_switch_core` | forwarding rules, waits for the table result, table changing while a frame waits, AXI-Stream on every output, start only into an empty FIFO, liveness | 6,390 / 6,390 copies, 0 AXI violations |
 | `tb_switch_smoke` | 10 directed steps over GMII: learn, unicast, flood, filter, bad frame not learned, station move, contention | all 10 steps exact |
 | `tb_switch` | whole switch: 4 independent RX clocks, reference model, ordered scoreboard per port pair, 24 coverage bins, liveness, internal AXI check | ~1,300 copies per seed, both modes |
 
@@ -198,7 +198,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 ## Limitations
 
 - **Head-of-line blocking.** One input queue per port: a frame waiting for a busy output blocks
-  everything behind it, even frames for idle outputs. That is a large part of the 37–44% drop
+  everything behind it, even frames for idle outputs. That is a large part of the 36–44% drop
   rate at 100% load. Virtual output queues would fix it.
 - **Small, simple table.** 16 entries, no aging timer (a real switch ages entries out after ~300 s),
   oldest-first replacement.
@@ -206,8 +206,8 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
 - **Does not meet timing yet, and has not run on hardware.** After place-and-route on an ECP5-45
-  (speed grade 6, one seed, I/O pins unconstrained), `sys_clk` reaches 67.3 MHz against a 156.25 MHz
-  target and the GMII clocks reach 94–127 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
+  (speed grade 6, one seed, I/O pins unconstrained), `sys_clk` reaches 70.4 MHz against a 156.25 MHz
+  target and the GMII clocks reach 100–129 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
 - Simulation verifies the logic around the synchronizers, not metastability itself.
 
 ## License

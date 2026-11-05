@@ -17,6 +17,10 @@
 //                   table hit on another port              -> that port
 //                   table hit on its own port              -> nothing (filtered)
 //                 Every copy is queued per (ingress, egress) pair.
+// MOVING FRAMES : in the last phase the table's answer keeps changing while a
+//                 frame waits, like a station moving. The frame must go where the
+//                 table pointed when the decision was registered: the answer two
+//                 clocks before xfer rises (table -> mask -> start -> xfer).
 // CHECKS        : every egress frame is the next expected one for its pair,
 //                 byte for byte; AXI-Stream on every egress (valid held, data
 //                 stable until ready); a frame starts only into an EMPTY FIFO;
@@ -48,6 +52,7 @@ module tb_switch_core;
         logic [47:0]  dst;
         bit           hit; bit [1:0] port;
         bit [3:0]     mask;       // expected destination set
+        bit           moving;     // the table's answer changes while it waits
     endclass
     class efrm; byte unsigned d[$]; endclass
 
@@ -66,6 +71,7 @@ module tb_switch_core;
             1: begin f.port = i[1:0]; f.hit = 1; end                                                         // known, SAME port -> filter
             2: begin f.port = 2'($urandom_range(0, 3)); f.hit = 0; end                                       // unknown -> flood
             3: begin f.port = 2'($urandom_range(0, 3)); f.hit = 0; end                                       // broadcast
+            5: begin f.port = 2'($urandom_range(0, 3)); if (f.port == i) f.port = f.port + 1; f.hit = 1; f.moving = 1; end   // known, keeps moving
             default: begin f.port = 2'($urandom_range(0, 3)); f.hit = 1; end                                 // multicast (flood even on a hit)
         endcase
         if      (kind == 3) f.dst = 48'hFFFF_FFFF_FFFF;
@@ -75,7 +81,8 @@ module tb_switch_core;
         for (int b = 5; b >= 0; b--) f.d.push_back(f.dst[8*b +: 8]);
         f.d.push_back(8'(i)); f.d.push_back(8'(seq >> 8)); f.d.push_back(8'(seq)); seq++;
         while (f.d.size() < len) f.d.push_back(8'($urandom()));
-        // spec model
+        // spec model (a moving frame's copy is expected when it starts, see below)
+        if (f.moving) begin srcq[i].push_back(f); n_frames++; return; end
         if (f.dst[40] || !f.hit)  f.mask = 4'hF & ~(4'b1 << i);
         else if (f.port == i)     f.mask = 4'b0000;
         else                      f.mask = 4'b1 << f.port;
@@ -92,6 +99,9 @@ module tb_switch_core;
     bit  have [4] = '{0, 0, 0, 0};
     int  idx [4]  = '{0, 0, 0, 0};
     int  lk_delay [4] = '{0, 0, 0, 0};
+    bit [1:0] lk_h1 [4] = '{0, 0, 0, 0}, lk_h2 [4] = '{0, 0, 0, 0};   // table answer 1 and 2 clocks ago
+    bit  xfer_p [4] = '{0, 0, 0, 0};
+    int  n_moved = 0, n_last_moment = 0;
     bit  took [4] = '{0, 0, 0, 0}, gone [4] = '{0, 0, 0, 0};
     int  waitc [4] = '{0, 0, 0, 0};
     int  max_wait = 0;
@@ -106,6 +116,15 @@ module tb_switch_core;
                 gone[i] = 1;
                 if (cur[i].mask != 0) begin errors++; $display("ERROR: ingress %0d dropped a frame that should go to %b", i, cur[i].mask); end
             end
+            // a moving frame starts: it must go where the table pointed at the decision
+            if (xfer[i] && !xfer_p[i] && cur[i].moving) begin
+                efrm x = new(); x.d = cur[i].d;
+                expq[i][lk_h2[i]].push_back(x); n_copies++;
+                if (lk_h2[i] != cur[i].port) n_moved++;
+                if (lk_h1[i] != lk_h2[i])    n_last_moment++;
+            end
+            xfer_p[i] = xfer[i];
+            lk_h2[i] = lk_h1[i]; lk_h1[i] = lk_port[2*i +: 2];
             // liveness: a head frame must be started (or dropped) in bounded time
             if (have[i] && !xfer[i] && !gone[i]) begin
                 waitc[i]++;
@@ -119,11 +138,13 @@ module tb_switch_core;
 
     always @(negedge clk) begin
         for (int i = 0; i < 4; i++) begin
+            bit just_gone = 0;
             if (gone[i]) begin
                 have[i] = 0; head_valid[i] = 0; lk_valid[i] = 0; in_tvalid[i] = 0; in_tlast[i] = 0; gone[i] = 0; took[i] = 0;
+                just_gone = 1;                            // head_valid stays low for a cycle, like ingress_buf
             end
             if (took[i]) begin idx[i]++; in_tvalid[i] = 0; took[i] = 0; end
-            if (!have[i] && srcq[i].size() != 0 && rst_n && $urandom_range(0, 99) < 70) begin
+            if (!just_gone && !have[i] && srcq[i].size() != 0 && rst_n && $urandom_range(0, 99) < 70) begin
                 cur[i] = srcq[i].pop_front(); have[i] = 1; idx[i] = 0;
                 head_valid[i] = 1; head_dst[48*i +: 48] = cur[i].dst;
                 // the table answers a few cycles later; until then its outputs are
@@ -135,6 +156,12 @@ module tb_switch_core;
                 if (lk_delay[i] == 0) begin
                     lk_valid[i] = 1; lk_hit[i] = cur[i].hit; lk_port[2*i +: 2] = cur[i].port;
                 end else lk_delay[i]--;
+            end
+            // the station keeps moving until the frame has started
+            if (have[i] && cur[i].moving && lk_valid[i] && !xfer[i] && $urandom_range(0, 99) < 40) begin
+                bit [1:0] np = 2'($urandom_range(0, 3));
+                if (np == i) np = np + 1;
+                lk_port[2*i +: 2] = np;
             end
             // stream: once tvalid is up it stays up until taken (AXI-Stream rule)
             if (have[i] && xfer[i] && !in_tvalid[i] && $urandom_range(0, 99) >= gap_pct) begin
@@ -233,12 +260,20 @@ module tb_switch_core;
         end
         run_until_empty("overload");
 
+        // 4. stations moving while their frames wait (only moving frames here, because
+        //    their copies are expected at start, after any frame already queued)
+        gap_pct = 10; ready_pct = 80; drain_pct = 80;
+        for (int n = 0; n < 300; n++) for (int i = 0; i < 4; i++) make(i, 5, $urandom_range(14, 120));
+        run_until_empty("moving");
+
         if (got_flood != exp_flood || got_filter != exp_filter) begin
             errors++; $display("ERROR: stat_flood %0d (exp %0d), stat_filter %0d (exp %0d)", got_flood, exp_flood, got_filter, exp_filter);
         end
         if (n_fork == 0 || n_par == 0 || n_contend == 0) begin errors++; $display("ERROR: coverage hole (fork %0d, parallel %0d, contention %0d)", n_fork, n_par, n_contend); end
+        if (n_moved == 0 || n_last_moment == 0) begin errors++; $display("ERROR: coverage hole (moved %0d, changed at the last moment %0d)", n_moved, n_last_moment); end
         $display("frames %0d -> %0d copies expected, %0d delivered  (flooded %0d, filtered %0d)", n_frames, n_copies, n_got, got_flood, got_filter);
         $display("coverage: fork cycles %0d, parallel-transfer cycles %0d, contended cycles %0d", n_fork, n_par, n_contend);
+        $display("moving frames: %0d went to a different port than first answered, %0d had the answer change at the last moment", n_moved, n_last_moment);
         $display("longest wait for an ingress to start: %0d cycles (limit 20000); AXI violations %0d", max_wait, n_axi);
         if (errors == 0) $display("RESULT: PASS"); else $display("RESULT: FAIL (%0d errors)", errors);
         $finish;

@@ -5,7 +5,7 @@ that passes real traffic, with published measurements. Each phase lists what "do
 
 | Phase | Goal | Status |
 | --- | --- | --- |
-| 1 | Meet timing on an FPGA | **in progress**: `sys_clk` 67.3 MHz, needs at least 125 MHz |
+| 1 | Meet timing on an FPGA | **in progress**: `sys_clk` 70.4 MHz, needs at least 125 MHz |
 | 2 | Measure throughput and latency | not started |
 | 3 | Make it connectable to real hardware | not started |
 | 4 | Pass real traffic on a board | not started, needs a board |

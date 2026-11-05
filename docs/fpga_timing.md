@@ -11,18 +11,18 @@ ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), one placement seed, I/O pins un
 
 | Clock | Target | Achieved |
 | --- | --- | --- |
-| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **67.3 MHz** |
-| `gmii_rx_clk[3:0]` | 125 MHz | 104–127 MHz (one of the four passes) |
-| `gmii_tx_clk[3:0]` | 125 MHz | 94–110 MHz |
+| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **70.4 MHz** |
+| `gmii_rx_clk[3:0]` | 125 MHz | 117–129 MHz (one of the four passes) |
+| `gmii_tx_clk[3:0]` | 125 MHz | 100–105 MHz |
 
 | Resource | Used | Available |
 | --- | --- | --- |
-| Logic cells (`TRELLIS_COMB`) | 8,467 (19%) | 43,848 |
-| Flip-flops | 3,180 (7%) | 43,848 |
+| Logic cells (`TRELLIS_COMB`) | 8,529 (19%) | 43,848 |
+| Flip-flops | 3,208 (7%) | 43,848 |
 | Block RAM (`DP16KD`) | 8 (7%) | 108 |
 | Distributed RAM write ports | 120 (2%) | 5,481 |
 
-Xilinx 7-series has synthesis results only (1,948 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
+Xilinx 7-series has synthesis results only (1,976 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
 flow here has no Xilinx place-and-route, so there are no Xilinx timing numbers.
 
 ## Reproducing the numbers
@@ -53,6 +53,7 @@ Each row is post-route unless marked otherwise. All rows use the same device and
 | Replace the multiplier with explicit muxes | 8,636 (19%) | 56.6 MHz | TX FIFO fill level through the egress arbiter |
 | Register the TX FIFO empty flag | 8,629 (19%) | 62.3 MHz | ingress commit decision, through a 32-bit carry chain |
 | Simplify the ingress length check | 8,467 (19%) | 67.3 MHz | queue read through the destination mask and grant logic to `own_v` |
+| Register the forwarding decision | 8,529 (19%) | 70.4 MHz | buffer-room subtraction through `commit` to the `learn_mac` enables |
 
 ### Memory written in an async-reset block
 
@@ -135,16 +136,39 @@ The GMII clocks moved in both directions after this change, though nothing in th
 (for example, `gmii_rx_clk[0]` went from 125 to 104 MHz). Treat small differences between single-seed
 runs as placement variation.
 
+### Registered forwarding decision (`rtl/switch_core.v`)
+
+The destination mask and request are now computed in one cycle and stored, and arbitration uses the
+stored values in the next. The shared round-robin pointer is unchanged.
+
+A stored request can be one cycle out of date, which needs care:
+
+- **`req` is gated with `active`.** In the cycle after a start, `req_q` is still high. If the table
+  changed at that moment, `mask` could name a free port and start the frame a second time.
+- **`req_q` is computed with `!active`.** After a frame ends, this stops a stale request for the frame
+  that just left.
+- **`drop` is gated with `head_valid`.** `drop_q` is still high in the cycle after a drop, and without
+  the gate the next frame could be dropped too. This relies on `head_valid` going low between frames,
+  which `ingress_buf` guarantees and the `tb_switch_core` stub now copies.
+- **`xmask` and `own_v` both use the stored `mask`.** If they used different versions, a port could be
+  owned without being driven.
+
+The first version of the test could not see most of this, because a table answer never changed while
+a frame waited. `tb_switch_core` now has a phase where the answer keeps changing. The expected port is
+the answer two clocks before `xfer` rises, and coverage fails unless some answers changed at that exact
+moment. Separately, `tb_switch` missed all six bugs below in a 100%-load run. Its stations never move,
+and it doesn't check the filter counters.
+
 ## Where the time goes now
 
-Routing is about 75% of each path below. Reducing logic levels should also reduce routing, because
-fewer long nets span the device.
+Routing is 70-80% of each path below. The `sys_clk` path has only 2.9 ns of logic, so removing logic
+levels will gain less from here. Long, high fan-out nets now matter more.
 
 | Clock | Slowest path | Delay | Logic / routing |
 | --- | --- | --- | --- |
-| `sys_clk` | `q_rd` -> `q_dst` read -> `mask` -> `req`/`gnt`/`start` -> `own_v` | 14.8 ns | 4.0 / 10.8 ns |
-| `gmii_tx_clk[3]` | `u_tx.st` -> `s_tready` -> FIFO read pointer -> `rempty_next` | 10.6 ns | 3.0 / 7.6 ns |
-| `gmii_rx_clk[0]` | `rx_rst_n` -> FIFO write pointer -> `wfull_next` | 9.6 ns | 2.7 / 6.9 ns |
+| `sys_clk` | `rd_ptr` -> `used` subtract -> `room` -> `commit` -> `learn_mac` enable | 14.2 ns | 2.9 / 11.3 ns |
+| `gmii_tx_clk[2]` | `u_tx.st` -> `s_tready` -> FIFO read pointer -> `rempty_next` | 10.0 ns | 2.9 / 7.1 ns |
+| `gmii_rx_clk[0]` | `rx_rst_n` -> FIFO write pointer -> `wfull_next` | 8.5 ns | 2.8 / 5.7 ns |
 
 The GMII paths shown are the slowest clock of each direction in this run. The worst path can differ by
 port because placement differs.
@@ -153,8 +177,8 @@ port because placement differs.
 
 In order:
 
-1. **Register the grant decision** in `rtl/switch_core.v`, so `req` -> `gnt` -> `start` -> `own_v`
-   is not one long path. Keep the shared round-robin pointer, because it is what prevents deadlock.
+1. **Shorten the ingress `commit` path** in `rtl/ingress_buf.v`: replace the `used` subtraction with a
+   pointer comparison, and stop `commit` directly enabling all of `learn_mac`.
 2. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
    `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
 3. **Try more seeds** with `--seed` once the results are close. One seed says little about margin.
@@ -194,7 +218,8 @@ In order:
 - `tb_mac_table` is now a request/response test. It checks the `lk_valid` rules, and it holds some
   addresses for up to 300 cycles to prove results follow the table.
 - `tb_switch_core` drives garbage on `lk_hit` and `lk_port` until `lk_valid` rises, with a random
-  delay, to prove the core waits.
+  delay, to prove the core waits. It also changes the table's answer while frames wait, to exercise
+  the registered decision.
 
 These bugs were injected by hand, once each, and are **not** part of `make bugs` yet:
 
@@ -211,6 +236,12 @@ These bugs were injected by hand, once each, and are **not** part of `make bugs`
 | Result never refreshed after the first answer (hit, then port) | `tb_mac_table` | caught, after strengthening the test |
 | Core ignores `lk_valid` | `tb_switch_core` | caught |
 | No `head_valid` gap after a pop | `tb_switch` | caught |
+| `req` not gated with `active` | `tb_switch_core` | caught, after adding the moving-station phase |
+| `req_q` not computed with `!active` | `tb_switch_core` | caught |
+| `drop` not gated with `head_valid` | `tb_switch_core` | caught |
+| `drop_q` ignores `lk_valid` | `tb_switch_core` | caught |
+| `xmask` uses the unregistered mask | `tb_switch_core` | caught, after adding the moving-station phase |
+| `own_v` uses the unregistered mask | `tb_switch_core` | caught |
 | TX empty flag not cleared by a write | `tb_mac_loop` | caught |
 | TX empty flag never rises | `tb_mac_loop` | caught |
 | RAM read on every cycle, not only on `rd_en` | `tb_ingress_buf` | passes: no behaviour change, since the extra value is never used |

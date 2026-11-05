@@ -8,6 +8,14 @@
 // The table answers a few cycles after a frame reaches the head, so nothing
 // happens to that frame until lk_valid[i] is high.
 //
+// The decision takes two steps, each in its own cycle: first the destination
+// mask and request are computed and registered, then they go through
+// arbitration. A registered request can be one cycle out of date: in the cycle
+// after a start, req_q is still high, and if the table just changed, mask could
+// name a free port and start the frame twice. So req is gated with active. drop
+// is gated with head_valid, so a frame is only dropped once. This relies on
+// head_valid going low for at least one cycle between frames.
+//
 // ARBITRATION (one round-robin arbiter per egress port):
 //   An egress port is FREE when no ingress owns it and its tx FIFO is empty.
 //   Each free egress grants the first requesting ingress starting from a
@@ -64,20 +72,23 @@ module switch_core (
     output reg  [3:0]   stat_flood,     // pulse: ingress i started a flooded frame
     output reg  [3:0]   stat_filter     // pulse: ingress i dropped a frame (dst on same port)
 );
-    // ---------------- destination masks ----------------
-    reg [3:0] mask [0:3];
-    reg [3:0] isflood;
+    // ---------------- destination masks (registered below) ----------------
+    reg [3:0] mask_d [0:3];
+    reg [3:0] isflood_d;
     integer i, e;
     always @(*) begin
         for (i = 0; i < 4; i = i + 1) begin
-            isflood[i] = head_dst[48*i + 40] || !lk_hit[i];
-            if (isflood[i])                          mask[i] = 4'hF & ~(4'b1 << i);
+            isflood_d[i] = head_dst[48*i + 40] || !lk_hit[i];
+            if (isflood_d[i])                        mask_d[i] = 4'hF & ~(4'b1 << i);
 `ifndef BUG_NO_FILTER
-            else if (lk_port[2*i +: 2] == i[1:0])    mask[i] = 4'b0000;          // filter
+            else if (lk_port[2*i +: 2] == i[1:0])    mask_d[i] = 4'b0000;        // filter
 `endif
-            else                                     mask[i] = 4'b1 << lk_port[2*i +: 2];
+            else                                     mask_d[i] = 4'b1 << lk_port[2*i +: 2];
         end
     end
+    reg [3:0] mask [0:3];
+    reg [3:0] isflood;
+    reg [3:0] req_q, drop_q;
 
     // ---------------- state ----------------
     reg [3:0] active;              // ingress i is streaming
@@ -95,7 +106,7 @@ module switch_core (
     integer k;
     always @(*) begin
         for (i = 0; i < 4; i = i + 1)
-            req[i] = head_valid[i] && lk_valid[i] && !active[i] && (mask[i] != 4'b0);
+            req[i] = req_q[i] && !active[i];
         for (e = 0; e < 4; e = e + 1) begin
             egfree[e] = !own_v[e] && eg_empty[e];
             gnt_v[e] = 1'b0; gnt[e] = 2'd0;
@@ -137,7 +148,7 @@ module switch_core (
 `endif
             xfer[i]      = active[i];
             in_tready[i] = active[i] && all_rdy[i];
-            drop[i]      = head_valid[i] && lk_valid[i] && !active[i] && (mask[i] == 4'b0);
+            drop[i]      = drop_q[i] && head_valid[i];
         end
         for (e = 0; e < 4; e = e + 1) begin
             eg_tdata[8*e +: 8] = in_tdata[8*owner[e] +: 8];
@@ -157,10 +168,15 @@ module switch_core (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             active <= 0; own_v <= 0; rr <= 0; stat_flood <= 0; stat_filter <= 0; done <= 0;
-            for (z = 0; z < 4; z = z + 1) begin xmask[z] <= 0; owner[z] <= 0; end
+            isflood <= 0; req_q <= 0; drop_q <= 0;
+            for (z = 0; z < 4; z = z + 1) begin xmask[z] <= 0; owner[z] <= 0; mask[z] <= 0; end
         end else begin
             stat_flood <= 0; stat_filter <= drop;
             for (i = 0; i < 4; i = i + 1) begin
+                mask[i]    <= mask_d[i];
+                isflood[i] <= isflood_d[i];
+                req_q[i]   <= head_valid[i] && lk_valid[i] && !active[i] && (mask_d[i] != 4'b0);
+                drop_q[i]  <= head_valid[i] && lk_valid[i] && !active[i] && (mask_d[i] == 4'b0);
                 if (start[i]) begin
                     active[i] <= 1'b1;
                     xmask[i]  <= mask[i];

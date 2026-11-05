@@ -351,6 +351,13 @@ next transmits, and an active station can be evicted just for being oldest.
 **Arbitration.** Outputs are shared, so when two frames want the same one, the core chooses. An output
 is free when nobody owns it and its transmit FIFO is empty.
 
+**Two steps, one tick each.** The mask and "I want to send" request are first stored in flip-flops, and
+arbitration uses those stored values on the next tick. Pipelining like this has a catch: for one tick, a
+stored value describes the recent past. Right after a frame starts, its stored request is still high. If
+the table changed at that instant, the mask could name a different free port and the frame could start
+twice. So the request is ignored once the input is `active`. A special test phase keeps changing table
+answers while frames wait, specifically to exercise this.
+
 **Deadlock, and how it's avoided.** A flood needs several outputs at once. Suppose input A holds port 2
 and waits for port 3, while input B holds port 3 and waits for port 2. Both would wait forever. Here,
 an input only starts when it has **every** port it needs, and all outputs share **one** round-robin
@@ -368,7 +375,7 @@ MHz. So a lock-stepped flood can't starve one copy mid-frame. The cost is a smal
 
 **Head-of-line blocking.** Each input has one queue. If the front frame waits for a busy output, frames
 behind it wait too, even if their outputs are idle. It's like a car waiting to turn right holding up
-everyone behind it who's going straight. This is a large part of why 37-44% of copies are dropped at
+everyone behind it who's going straight. This is a large part of why 36-44% of copies are dropped at
 100% load. Virtual output queues would fix it, and they're on the roadmap.
 
 ### Top level (`rtl/eth_switch_4port.v`)
@@ -455,8 +462,9 @@ passed, but the first attempt at synthesis didn't even finish:
 | 4 | An index calculation became a hardware multiplier | Write explicit muxes | 19% | 56.6 MHz |
 | 5 | The transmit FIFO's fill calculation ran straight into the arbiter | Store the "empty" flag in a flip-flop | 19% | 62.3 MHz |
 | 6 | A length check accidentally used 32-bit arithmetic | Rewrite it without the addition | 19% | 67.3 MHz |
+| 7 | One tick had to choose destinations and arbitrate | Split into two ticks | 19% | 70.4 MHz |
 
-**What these numbers mean.** 67.3 MHz means a tick must last at least 14.8 ns. The minimum for `sys_clk`
+**What these numbers mean.** 70.4 MHz means a tick must last at least 14.2 ns. The minimum for `sys_clk`
 is 125 MHz, which is 8 ns. It can't go lower, because each port moves one byte per tick and bytes arrive
 at 125 MHz. So the slowest path must get more than twice as fast.
 
@@ -478,7 +486,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **In progress:**
 
-- Meeting FPGA timing. It routes, but `sys_clk` reaches 67.3 MHz of a required 125 MHz
+- Meeting FPGA timing. It routes, but `sys_clk` reaches 70.4 MHz of a required 125 MHz
 
 **Not done, so it can't yet connect to a real network:**
 
@@ -586,7 +594,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
-Simulation ignores real delays. The slowest path takes 14.8 ns, but the clock needs a tick every 8 ns.
+Simulation ignores real delays. The slowest path takes 14.2 ns, but the clock needs a tick every 8 ns.
 It also lacks the RGMII and MDIO support that real boards generally need.
 </details>
 
