@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12">
+<rect width="1000" height="560" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker></defs>
+<text x="20" y="30" font-size="16" font-weight="600" fill="#1f2328">Ethernet_MAC_L2_Switch: 4-port 1G learning switch</text>
+<rect x="290" y="52" width="390" height="440" fill="#f6f8fa" stroke="#d0d7de"/>
+<line x1="290" y1="52" x2="290" y2="492" stroke="#afb8c1" stroke-dasharray="4 4"/>
+<line x1="680" y1="52" x2="680" y2="492" stroke="#afb8c1" stroke-dasharray="4 4"/>
+<text x="155" y="70" text-anchor="middle" fill="#59636e">GMII rx clocks: 125 MHz, one per port</text>
+<text x="485" y="70" text-anchor="middle" fill="#59636e">system clock: 156.25 MHz</text>
+<text x="840" y="70" text-anchor="middle" fill="#59636e">GMII tx clock: 125 MHz</text>
+<text x="22" y="111.0" fill="#1f2328" font-weight="600">port 0</text>
+<text x="22" y="126.0" fill="#59636e" font-size="10.5">GMII rx</text>
+<line x1="70" y1="115.0" x2="92" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="92" y="90" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="142.0" y="112.0" text-anchor="middle" font-weight="600" fill="#1f2328">RX MAC</text>
+<text x="142.0" y="128.0" text-anchor="middle" font-size="10.5" fill="#59636e">FCS, runt, rx_er</text>
+<line x1="192" y1="115.0" x2="240" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="240" y="90" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="290.0" y="112.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="290.0" y="128.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="340" y1="115.0" x2="368" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="368" y="90" width="112" height="50" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1.3"/>
+<text x="424.0" y="112.0" text-anchor="middle" font-weight="600" fill="#1f2328">ingress buffer</text>
+<text x="424.0" y="128.0" text-anchor="middle" font-size="10.5" fill="#59636e">4 KB, store & fwd</text>
+<line x1="480" y1="115.0" x2="510" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="600" y1="115.0" x2="630" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="630" y="90" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="680.0" y="112.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="680.0" y="128.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="730" y1="115.0" x2="760" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="760" y="90" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="810.0" y="112.0" text-anchor="middle" font-weight="600" fill="#1f2328">TX MAC</text>
+<text x="810.0" y="128.0" text-anchor="middle" font-size="10.5" fill="#59636e">preamble, pad, FCS</text>
+<line x1="860" y1="115.0" x2="890" y2="115.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="896" y="111.0" fill="#1f2328" font-weight="600">port 0</text>
+<text x="896" y="126.0" fill="#59636e" font-size="10.5">GMII tx</text>
+<text x="22" y="191.0" fill="#1f2328" font-weight="600">port 1</text>
+<text x="22" y="206.0" fill="#59636e" font-size="10.5">GMII rx</text>
+<line x1="70" y1="195.0" x2="92" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="92" y="170" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="142.0" y="192.0" text-anchor="middle" font-weight="600" fill="#1f2328">RX MAC</text>
+<text x="142.0" y="208.0" text-anchor="middle" font-size="10.5" fill="#59636e">FCS, runt, rx_er</text>
+<line x1="192" y1="195.0" x2="240" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="240" y="170" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="290.0" y="192.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="290.0" y="208.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="340" y1="195.0" x2="368" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="368" y="170" width="112" height="50" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1.3"/>
+<text x="424.0" y="192.0" text-anchor="middle" font-weight="600" fill="#1f2328">ingress buffer</text>
+<text x="424.0" y="208.0" text-anchor="middle" font-size="10.5" fill="#59636e">4 KB, store & fwd</text>
+<line x1="480" y1="195.0" x2="510" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="600" y1="195.0" x2="630" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="630" y="170" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="680.0" y="192.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="680.0" y="208.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="730" y1="195.0" x2="760" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="760" y="170" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="810.0" y="192.0" text-anchor="middle" font-weight="600" fill="#1f2328">TX MAC</text>
+<text x="810.0" y="208.0" text-anchor="middle" font-size="10.5" fill="#59636e">preamble, pad, FCS</text>
+<line x1="860" y1="195.0" x2="890" y2="195.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="896" y="191.0" fill="#1f2328" font-weight="600">port 1</text>
+<text x="896" y="206.0" fill="#59636e" font-size="10.5">GMII tx</text>
+<text x="22" y="271.0" fill="#1f2328" font-weight="600">port 2</text>
+<text x="22" y="286.0" fill="#59636e" font-size="10.5">GMII rx</text>
+<line x1="70" y1="275.0" x2="92" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="92" y="250" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="142.0" y="272.0" text-anchor="middle" font-weight="600" fill="#1f2328">RX MAC</text>
+<text x="142.0" y="288.0" text-anchor="middle" font-size="10.5" fill="#59636e">FCS, runt, rx_er</text>
+<line x1="192" y1="275.0" x2="240" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="240" y="250" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="290.0" y="272.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="290.0" y="288.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="340" y1="275.0" x2="368" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="368" y="250" width="112" height="50" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1.3"/>
+<text x="424.0" y="272.0" text-anchor="middle" font-weight="600" fill="#1f2328">ingress buffer</text>
+<text x="424.0" y="288.0" text-anchor="middle" font-size="10.5" fill="#59636e">4 KB, store & fwd</text>
+<line x1="480" y1="275.0" x2="510" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="600" y1="275.0" x2="630" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="630" y="250" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="680.0" y="272.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="680.0" y="288.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="730" y1="275.0" x2="760" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="760" y="250" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="810.0" y="272.0" text-anchor="middle" font-weight="600" fill="#1f2328">TX MAC</text>
+<text x="810.0" y="288.0" text-anchor="middle" font-size="10.5" fill="#59636e">preamble, pad, FCS</text>
+<line x1="860" y1="275.0" x2="890" y2="275.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="896" y="271.0" fill="#1f2328" font-weight="600">port 2</text>
+<text x="896" y="286.0" fill="#59636e" font-size="10.5">GMII tx</text>
+<text x="22" y="351.0" fill="#1f2328" font-weight="600">port 3</text>
+<text x="22" y="366.0" fill="#59636e" font-size="10.5">GMII rx</text>
+<line x1="70" y1="355.0" x2="92" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="92" y="330" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="142.0" y="352.0" text-anchor="middle" font-weight="600" fill="#1f2328">RX MAC</text>
+<text x="142.0" y="368.0" text-anchor="middle" font-size="10.5" fill="#59636e">FCS, runt, rx_er</text>
+<line x1="192" y1="355.0" x2="240" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="240" y="330" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="290.0" y="352.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="290.0" y="368.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="340" y1="355.0" x2="368" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="368" y="330" width="112" height="50" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1.3"/>
+<text x="424.0" y="352.0" text-anchor="middle" font-weight="600" fill="#1f2328">ingress buffer</text>
+<text x="424.0" y="368.0" text-anchor="middle" font-size="10.5" fill="#59636e">4 KB, store & fwd</text>
+<line x1="480" y1="355.0" x2="510" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<line x1="600" y1="355.0" x2="630" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="630" y="330" width="100" height="50" rx="6" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.3"/>
+<text x="680.0" y="352.0" text-anchor="middle" font-weight="600" fill="#1f2328">async FIFO</text>
+<text x="680.0" y="368.0" text-anchor="middle" font-size="10.5" fill="#59636e">Gray pointers</text>
+<line x1="730" y1="355.0" x2="760" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="760" y="330" width="100" height="50" rx="6" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.3"/>
+<text x="810.0" y="352.0" text-anchor="middle" font-weight="600" fill="#1f2328">TX MAC</text>
+<text x="810.0" y="368.0" text-anchor="middle" font-size="10.5" fill="#59636e">preamble, pad, FCS</text>
+<line x1="860" y1="355.0" x2="890" y2="355.0" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="896" y="351.0" fill="#1f2328" font-weight="600">port 3</text>
+<text x="896" y="366.0" fill="#59636e" font-size="10.5">GMII tx</text>
+<rect x="510" y="90" width="90" height="290" rx="6" fill="#fbefff" stroke="#c297ff" stroke-width="1.3"/>
+<text x="555" y="205.0" text-anchor="middle" font-weight="600" fill="#1f2328">switch</text>
+<text x="555" y="221.0" text-anchor="middle" font-weight="600" fill="#1f2328">core</text>
+<text x="555" y="243.0" text-anchor="middle" font-size="10.5" fill="#59636e">forwarding</text>
+<text x="555" y="257.0" text-anchor="middle" font-size="10.5" fill="#59636e">shared-pointer</text>
+<text x="555" y="271.0" text-anchor="middle" font-size="10.5" fill="#59636e">arbiter</text>
+<text x="555" y="285.0" text-anchor="middle" font-size="10.5" fill="#59636e">AXIS fork</text>
+<rect x="368" y="420" width="232" height="46" rx="6" fill="#dafbe1" stroke="#4ac26b" stroke-width="1.3"/>
+<text x="484.0" y="440.0" text-anchor="middle" font-weight="600" fill="#1f2328">MAC table</text>
+<text x="484.0" y="456.0" text-anchor="middle" font-size="10.5" fill="#59636e">16 entries, learn + 4 lookups / cycle</text>
+<line x1="424" y1="380" x2="424" y2="420" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="430" y="404" font-size="10.5" fill="#59636e">learn src (all 4)</text>
+<line x1="555" y1="420" x2="555" y2="380" stroke="#57606a" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="561" y="404" font-size="10.5" fill="#59636e">lookup dst (all 4)</text>
+<text x="20" y="542" font-size="11" fill="#59636e">All internal links are AXI4-Stream. A frame is forwarded only after its CRC is checked; floods go to all their ports in one lock-step fork.</text>
+</svg>

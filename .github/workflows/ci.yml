@@ -1,0 +1,29 @@
+# Runs the whole verification suite on every push and pull request.
+# Every step fails if any test does not print RESULT: PASS.
+name: eth-switch-ci
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45          # a hung simulation must not run for hours
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Verilator (Ubuntu 24.04 ships 5.020, the version this was verified with)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y verilator make
+          verilator --version
+      - name: Lint (Verilator -Wall)
+        run: make lint
+      - name: Unit tests, loopback, smoke, randomized switch, unit-level bug injection
+        run: make test
+      - name: Congestion mode (100% load, 3 seeds)
+        run: make congest
+      - name: Whole-switch bug injection
+        run: make sysbugs
+      - name: Keep the logs if something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: build/*.log

@@ -139,6 +139,12 @@ module tb_switch_smoke;
     always @(posedge rclk) n_bad += $countones(s_rx_bad);
     always @(posedge gtx_clk) if (|s_underrun) begin errors++; $display("ERROR: TX underrun"); end
 
+    // +vcd: dump the testbench and the switch's top-level wires (make wave)
+    initial if ($test$plusargs("vcd")) begin
+        $dumpfile("build/switch.vcd");
+        $dumpvars(2, tb_switch_smoke);
+    end
+
     initial begin
         frm f, g;
         fork monitor(0); monitor(1); monitor(2); monitor(3); join_none   // (no fork inside a loop: Verilator 5.020)

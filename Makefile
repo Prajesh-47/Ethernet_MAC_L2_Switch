@@ -13,6 +13,8 @@
 #   make all     test + congest + sysbugs (~10 min)
 #   make bugs    rebuild with each injected bug; fails if any test still passes
 #   make test    every test so far
+#   make lint    Verilator -Wall on the whole switch
+#   make wave    smoke test with a VCD (build/switch.vcd) + docs/waveform.svg
 # Recipe lines start with '>' instead of a TAB (easier to copy-paste).
 .RECIPEPREFIX := >
 CDC    := rtl/cdc/reset_sync.v rtl/cdc/sync_2ff.v rtl/cdc/fifo_mem.v rtl/cdc/wptr_full.v rtl/cdc/rptr_empty.v rtl/cdc/async_fifo.v
@@ -20,21 +22,32 @@ MAC    := rtl/eth_mac_tx.v rtl/eth_mac_rx.v rtl/eth_mac.v
 SW     := rtl/ingress_buf.v rtl/mac_table.v rtl/switch_core.v rtl/eth_switch_4port.v
 VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCALEMOD -Irtl -j 4
 
-.PHONY: crc tx rx loop ingress table core smoke sim congest bugs sysbugs test all clean
+# run a unit-test binary: show its output, and FAIL the make target unless it
+# printed "RESULT: PASS" (a plain "sim | grep" would always exit 0, so a failing
+# test would look green in CI)
+run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
+
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs test all clean
+# UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
+# the switch top does not use the ingress descriptor's length; nothing else is waived
+lint:
+> verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Irtl $(CDC) $(MAC) $(SW) --top-module eth_switch_4port
+> @echo "RESULT: PASS (lint clean)"
+
 crc:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_crc tb/tb_crc32.sv --top-module tb_crc32 -o sim > build/build_crc.log
-> ./build/obj_crc/sim | grep -v finish
+> @$(call run,crc)
 
 tx:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_tx rtl/eth_mac_tx.v tb/tb_mac_tx.sv --top-module tb_mac_tx -o sim > build/build_tx.log
-> ./build/obj_tx/sim | grep -v finish
+> @$(call run,tx)
 
 rx:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_rx rtl/eth_mac_rx.v tb/tb_mac_rx.sv --top-module tb_mac_rx -o sim > build/build_rx.log
-> ./build/obj_rx/sim | grep -v finish
+> @$(call run,rx)
 
 loop:
 > @mkdir -p build
@@ -47,22 +60,22 @@ loop:
 ingress:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_ingress rtl/ingress_buf.v tb/tb_ingress_buf.sv --top-module tb_ingress_buf -o sim > build/build_ingress.log
-> ./build/obj_ingress/sim | grep -v finish
+> @$(call run,ingress)
 
 table:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_table rtl/mac_table.v tb/tb_mac_table.sv --top-module tb_mac_table -o sim > build/build_table.log
-> ./build/obj_table/sim | grep -v finish
+> @$(call run,table)
 
 core:
 > @mkdir -p build
 > verilator $(VFLAGS) --Mdir build/obj_core rtl/switch_core.v tb/tb_switch_core.sv --top-module tb_switch_core -o sim > build/build_core.log
-> ./build/obj_core/sim | grep -v finish
+> @$(call run,core)
 
 smoke:
 > @mkdir -p build
 > verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --Mdir build/obj_smoke $(CDC) $(MAC) $(SW) tb/tb_switch_smoke.sv --top-module tb_switch_smoke -o sim > build/build_smoke.log
-> ./build/obj_smoke/sim | grep -v finish
+> @$(call run,smoke)
 
 # no-drop mode (20% load): every expected copy must arrive. The first seed prints
 # the full coverage table, the others one summary line each.
@@ -88,6 +101,13 @@ congest:
 >   echo "$$out" | grep -q "RESULT: PASS" || { echo "$$out" | grep ERROR | head -5; echo "RESULT: FAIL (seed $$s)"; exit 1; }; \
 > done; echo "RESULT: PASS ($(words $(SEEDS)) seeds at 100% load)"
 
+wave:
+> @mkdir -p build
+> verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --trace --Mdir build/obj_wave $(CDC) $(MAC) $(SW) tb/tb_switch_smoke.sv --top-module tb_switch_smoke -o sim > build/build_wave.log
+> ./build/obj_wave/sim +vcd | grep -E "step  1|RESULT"
+> python3 docs/gen_waveform.py build/switch.vcd docs/waveform.svg
+> @echo "open with: gtkwave build/switch.vcd"
+
 # each entry: <define>:<rtl file>:<testbench top>
 BUGS := BUG_NO_REWIND:rtl/ingress_buf.v:tb_ingress_buf BUG_NO_MOVE:rtl/mac_table.v:tb_mac_table \
         BUG_NO_LEARN:rtl/mac_table.v:tb_mac_table BUG_RX_NO_CRC:rtl/eth_mac_rx.v:tb_mac_rx \
@@ -101,21 +121,26 @@ bugs:
 >   if ./build/obj_$$def/sim | grep -q "RESULT: PASS"; then echo "$$def: NOT caught"; exit 1; else echo "$$def: caught"; fi; \
 > done; echo "RESULT: PASS (every injected bug caught)"
 
-# Every bug through the WHOLE-switch test, at 20% and 100% load. Prints a
-# caught / missed line per bug; a miss is reported, not an error, because some
-# bugs are only visible to a unit test (see the README's bug table).
+# Every bug through the WHOLE-switch test, at 20% and 100% load. Two bugs are
+# EXPECTED to slip past it -- the README explains why -- and are caught by unit
+# tests instead. The target fails if any other bug is missed, or if one of the
+# two is suddenly caught (then the explanation is out of date).
 SYSBUGS := BUG_NO_REWIND BUG_NO_MOVE BUG_NO_LEARN BUG_RX_NO_CRC BUG_PER_EGRESS_PRIORITY \
            BUG_FORK_ANY_READY BUG_FORK_GATED_VALID BUG_NO_FILTER
+SYSBUGS_MISSED := BUG_NO_MOVE BUG_FORK_GATED_VALID
 sysbugs:
 > @mkdir -p build
 > @for b in $(SYSBUGS); do \
 >   verilator $(VFLAGS) -Wno-PINCONNECTEMPTY +define+$$b --Mdir build/sys_$$b $(CDC) $(MAC) $(SW) tb/tb_switch.sv --top-module tb_switch -o sim > build/build_sys_$$b.log || { echo "$$b: BUILD FAILED"; exit 1; }; \
+>   want=caught; case " $(SYSBUGS_MISSED) " in *" $$b "*) want=missed;; esac; \
 >   r=""; for L in 20 100; do \
->     if ./build/sys_$$b/sim +N=300 +LOAD=$$L | grep -q "RESULT: PASS"; then r="$$r  load $$L%: missed"; else r="$$r  load $$L%: caught"; fi; \
+>     if ./build/sys_$$b/sim +N=300 +LOAD=$$L | grep -q "RESULT: PASS"; then got=missed; else got=caught; fi; \
+>     r="$$r  load $$L%: $$got"; \
+>     [ $$got = $$want ] || { echo "$$b:$$r  <-- expected $$want"; exit 1; }; \
 >   done; echo "$$b:$$r"; \
-> done
+> done; echo "RESULT: PASS (whole-switch bug results as expected)"
 
-test: crc tx rx loop ingress table core smoke sim bugs
+test: lint crc tx rx loop ingress table core smoke sim bugs
 
 all: test congest sysbugs
 
