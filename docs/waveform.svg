@@ -1,36 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 970 378" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
 <rect width="970" height="378" fill="#ffffff"/>
 <text x="20" y="26" font-size="14" font-weight="600" fill="#1f2328" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">One broadcast in on port 0: stored, checked, then forked to ports 1, 2 and 3 at once</text>
-<line x1="298.1" x2="298.1" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="298.1" y="358" text-anchor="middle" fill="#59636e" font-size="10">200 ns</text>
-<line x1="396.2" x2="396.2" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="396.2" y="358" text-anchor="middle" fill="#59636e" font-size="10">400 ns</text>
-<line x1="494.3" x2="494.3" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="494.3" y="358" text-anchor="middle" fill="#59636e" font-size="10">600 ns</text>
-<line x1="592.4" x2="592.4" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="592.4" y="358" text-anchor="middle" fill="#59636e" font-size="10">800 ns</text>
-<line x1="690.5" x2="690.5" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="690.5" y="358" text-anchor="middle" fill="#59636e" font-size="10">1000 ns</text>
-<line x1="788.6" x2="788.6" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="788.6" y="358" text-anchor="middle" fill="#59636e" font-size="10">1200 ns</text>
-<line x1="886.7" x2="886.7" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
-<text x="886.7" y="358" text-anchor="middle" fill="#59636e" font-size="10">1400 ns</text>
+<line x1="295.6" x2="295.6" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="295.6" y="358" text-anchor="middle" fill="#59636e" font-size="10">200 ns</text>
+<line x1="391.1" x2="391.1" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="391.1" y="358" text-anchor="middle" fill="#59636e" font-size="10">400 ns</text>
+<line x1="486.7" x2="486.7" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="486.7" y="358" text-anchor="middle" fill="#59636e" font-size="10">600 ns</text>
+<line x1="582.3" x2="582.3" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="582.3" y="358" text-anchor="middle" fill="#59636e" font-size="10">800 ns</text>
+<line x1="677.8" x2="677.8" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="677.8" y="358" text-anchor="middle" fill="#59636e" font-size="10">1000 ns</text>
+<line x1="773.4" x2="773.4" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="773.4" y="358" text-anchor="middle" fill="#59636e" font-size="10">1200 ns</text>
+<line x1="868.9" x2="868.9" y1="50" y2="342" stroke="#d1d9e0" stroke-dasharray="2 3"/>
+<text x="868.9" y="358" text-anchor="middle" fill="#59636e" font-size="10">1400 ns</text>
 <text x="188" y="75.0" text-anchor="end" fill="#1f2328">port 0  rx_dv</text>
-<path d="M200.0 80 H249.0 V62 H531.6 V80 H940.0" fill="none" stroke="#0969da" stroke-width="1.6"/>
+<path d="M200.0 80 H247.8 V62 H523.0 V80 H940.0" fill="none" stroke="#0969da" stroke-width="1.6"/>
 <text x="188" y="105.0" text-anchor="end" fill="#1f2328">ingress 0 head_valid</text>
-<path d="M200.0 110 H551.3 V92 H752.2 V110 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
+<path d="M200.0 110 H542.3 V92 H756.3 V110 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
 <text x="188" y="135.0" text-anchor="end" fill="#1f2328">core xfer (port 0)</text>
-<path d="M200.0 140 H554.5 V122 H752.2 V140 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
+<path d="M200.0 140 H563.7 V122 H756.3 V140 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
 <text x="188" y="165.0" text-anchor="end" fill="#1f2328">core -> TX FIFO 1 valid</text>
-<path d="M200.0 170 H563.9 V152 H752.2 V170 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
+<path d="M200.0 170 H572.8 V152 H756.3 V170 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
 <text x="188" y="195.0" text-anchor="end" fill="#1f2328">core -> TX FIFO 2 valid</text>
-<path d="M200.0 200 H563.9 V182 H752.2 V200 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
+<path d="M200.0 200 H572.8 V182 H756.3 V200 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
 <text x="188" y="225.0" text-anchor="end" fill="#1f2328">core -> TX FIFO 3 valid</text>
-<path d="M200.0 230 H563.9 V212 H752.2 V230 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
+<path d="M200.0 230 H572.8 V212 H756.3 V230 H940.0" fill="none" stroke="#8250df" stroke-width="1.6"/>
 <text x="188" y="255.0" text-anchor="end" fill="#1f2328">port 1  tx_en</text>
-<path d="M200.0 260 H583.9 V242 H866.4 V260 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
+<path d="M200.0 260 H593.1 V242 H868.3 V260 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
 <text x="188" y="285.0" text-anchor="end" fill="#1f2328">port 2  tx_en</text>
-<path d="M200.0 290 H583.9 V272 H866.4 V290 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
+<path d="M200.0 290 H593.1 V272 H868.3 V290 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
 <text x="188" y="315.0" text-anchor="end" fill="#1f2328">port 3  tx_en</text>
-<path d="M200.0 320 H583.9 V302 H866.4 V320 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
+<path d="M200.0 320 H593.1 V302 H868.3 V320 H940.0" fill="none" stroke="#1a7f37" stroke-width="1.6"/>
 </svg>

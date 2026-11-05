@@ -37,7 +37,7 @@ module eth_switch_4port (
     wire [3:0]   xfer, drop;
     wire [31:0]  o_d;   wire [3:0] o_v, o_l, o_r;
     wire [3:0]   ln_v, ln_ack;  wire [191:0] ln_mac;
-    wire [3:0]   lk_hit; wire [7:0] lk_port;
+    wire [3:0]   lk_valid, lk_hit; wire [7:0] lk_port;
 
     genvar p;
     generate
@@ -69,12 +69,12 @@ module eth_switch_4port (
 
     mac_table u_tbl (
         .clk(sys_clk), .rst_n(srst_n),
-        .lk_mac(hdst), .lk_hit(lk_hit), .lk_port(lk_port),
+        .lk_en(hv), .lk_mac(hdst), .lk_valid(lk_valid), .lk_hit(lk_hit), .lk_port(lk_port),
         .ln_valid(ln_v), .ln_mac(ln_mac), .ln_ack(ln_ack));
 
     switch_core u_core (
         .clk(sys_clk), .rst_n(srst_n),
-        .head_valid(hv), .head_dst(hdst), .lk_hit(lk_hit), .lk_port(lk_port),
+        .head_valid(hv), .head_dst(hdst), .lk_valid(lk_valid), .lk_hit(lk_hit), .lk_port(lk_port),
         .xfer(xfer), .drop(drop),
         .in_tdata(o_d), .in_tvalid(o_v), .in_tlast(o_l), .in_tready(o_r),
         .eg_empty(tx_empty), .eg_tdata(tx_d), .eg_tvalid(tx_v), .eg_tlast(tx_l), .eg_tready(tx_r),

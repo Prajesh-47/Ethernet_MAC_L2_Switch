@@ -5,6 +5,8 @@
 //   dst multicast/broadcast (dst[40] = 1)  -> flood: every port except i
 //   dst found in the table on port p       -> p, or DROP if p == i (filtered)
 //   dst unknown                            -> flood
+// The table answers a few cycles after a frame reaches the head, so nothing
+// happens to that frame until lk_valid[i] is high.
 //
 // ARBITRATION (one round-robin arbiter per egress port):
 //   An egress port is FREE when no ingress owns it and its tx FIFO is empty.
@@ -43,7 +45,8 @@ module switch_core (
     // per ingress (4 ports packed)
     input  wire [3:0]   head_valid,
     input  wire [191:0] head_dst,
-    input  wire [3:0]   lk_hit,         // from mac_table, for head_dst
+    input  wire [3:0]   lk_valid,       // from mac_table: lk_hit / lk_port are for head_dst
+    input  wire [3:0]   lk_hit,
     input  wire [7:0]   lk_port,
     output reg  [3:0]   xfer,
     output reg  [3:0]   drop,
@@ -92,7 +95,7 @@ module switch_core (
     integer k;
     always @(*) begin
         for (i = 0; i < 4; i = i + 1)
-            req[i] = head_valid[i] && !active[i] && (mask[i] != 4'b0);
+            req[i] = head_valid[i] && lk_valid[i] && !active[i] && (mask[i] != 4'b0);
         for (e = 0; e < 4; e = e + 1) begin
             egfree[e] = !own_v[e] && eg_empty[e];
             gnt_v[e] = 1'b0; gnt[e] = 2'd0;
@@ -134,7 +137,7 @@ module switch_core (
 `endif
             xfer[i]      = active[i];
             in_tready[i] = active[i] && all_rdy[i];
-            drop[i]      = head_valid[i] && !active[i] && (mask[i] == 4'b0);
+            drop[i]      = head_valid[i] && lk_valid[i] && !active[i] && (mask[i] == 4'b0);
         end
         for (e = 0; e < 4; e = e + 1) begin
             eg_tdata[8*e +: 8] = in_tdata[8*owner[e] +: 8];

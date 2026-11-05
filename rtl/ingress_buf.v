@@ -15,6 +15,8 @@
 //   head_* describes the oldest committed frame. While `xfer` is high the
 //   buffer streams that frame on out_t*; the descriptor pops on the tlast
 //   beat. `drop` (one cycle) discards the head frame without sending it.
+//   head_valid goes low for one cycle after every pop, which tells the MAC
+//   table that head_dst changed and any lookup in progress is out of date.
 //
 // Test-only bug switch: +define+BUG_NO_REWIND (a dropped frame's bytes are
 // left in the buffer).
@@ -141,7 +143,8 @@ module ingress_buf #(
     reg [1:0]  pf_wp, pf_rp;
     reg [2:0]  pf_cnt;
 
-    assign head_valid = !q_empty;
+    reg        just_popped;
+    assign head_valid = !q_empty && !just_popped;
     assign head_len   = q_len[q_rd[2:0]];
     assign head_dst   = q_dst[q_rd[2:0]];
     assign out_tvalid = (pf_cnt != 3'd0);
@@ -162,7 +165,9 @@ module ingress_buf #(
         if (!rst_n) begin
             f_state <= F_IDLE; fetch_ptr <= 0; f_cnt <= 0; rd_ptr <= 0; q_rd <= 0;
             rd_valid <= 0; rd_last <= 0; pf_wp <= 0; pf_rp <= 0; pf_cnt <= 0;
+            just_popped <= 0;
         end else begin
+            just_popped <= (drop && head_valid) || (pf_pop && out_tlast);
             rd_valid <= rd_en;
             if (rd_en)    rd_last <= f_last;
             if (rd_valid) pf_wp   <= pf_wp + 1'b1;

@@ -29,7 +29,7 @@ module tb_switch_core;
     always #3.2 clk = ~clk;
 
     // core ports
-    logic [3:0]   head_valid = 0, lk_hit = 0, in_tvalid = 0, in_tlast = 0, eg_empty = 4'hF, eg_tready = 0;
+    logic [3:0]   head_valid = 0, lk_valid = 0, lk_hit = 0, in_tvalid = 0, in_tlast = 0, eg_empty = 4'hF, eg_tready = 0;
     logic [191:0] head_dst = 0;
     logic [7:0]   lk_port = 0;
     logic [31:0]  in_tdata = 0;
@@ -37,7 +37,7 @@ module tb_switch_core;
     wire  [31:0]  eg_tdata;
 
     switch_core dut (.clk(clk), .rst_n(rst_n),
-        .head_valid(head_valid), .head_dst(head_dst), .lk_hit(lk_hit), .lk_port(lk_port),
+        .head_valid(head_valid), .head_dst(head_dst), .lk_valid(lk_valid), .lk_hit(lk_hit), .lk_port(lk_port),
         .xfer(xfer), .drop(drop), .in_tdata(in_tdata), .in_tvalid(in_tvalid), .in_tlast(in_tlast), .in_tready(in_tready),
         .eg_empty(eg_empty), .eg_tdata(eg_tdata), .eg_tvalid(eg_tvalid), .eg_tlast(eg_tlast), .eg_tready(eg_tready),
         .stat_flood(stat_flood), .stat_filter(stat_filter));
@@ -91,6 +91,7 @@ module tb_switch_core;
     sfrm cur [4];
     bit  have [4] = '{0, 0, 0, 0};
     int  idx [4]  = '{0, 0, 0, 0};
+    int  lk_delay [4] = '{0, 0, 0, 0};
     bit  took [4] = '{0, 0, 0, 0}, gone [4] = '{0, 0, 0, 0};
     int  waitc [4] = '{0, 0, 0, 0};
     int  max_wait = 0;
@@ -119,13 +120,21 @@ module tb_switch_core;
     always @(negedge clk) begin
         for (int i = 0; i < 4; i++) begin
             if (gone[i]) begin
-                have[i] = 0; head_valid[i] = 0; in_tvalid[i] = 0; in_tlast[i] = 0; gone[i] = 0; took[i] = 0;
+                have[i] = 0; head_valid[i] = 0; lk_valid[i] = 0; in_tvalid[i] = 0; in_tlast[i] = 0; gone[i] = 0; took[i] = 0;
             end
             if (took[i]) begin idx[i]++; in_tvalid[i] = 0; took[i] = 0; end
             if (!have[i] && srcq[i].size() != 0 && rst_n && $urandom_range(0, 99) < 70) begin
                 cur[i] = srcq[i].pop_front(); have[i] = 1; idx[i] = 0;
                 head_valid[i] = 1; head_dst[48*i +: 48] = cur[i].dst;
-                lk_hit[i] = cur[i].hit; lk_port[2*i +: 2] = cur[i].port;
+                // the table answers a few cycles later; until then its outputs are
+                // garbage, which the core must not act on
+                lk_hit[i] = 1'($urandom()); lk_port[2*i +: 2] = 2'($urandom());
+                lk_delay[i] = $urandom_range(0, 9);
+            end
+            if (have[i] && !lk_valid[i]) begin
+                if (lk_delay[i] == 0) begin
+                    lk_valid[i] = 1; lk_hit[i] = cur[i].hit; lk_port[2*i +: 2] = cur[i].port;
+                end else lk_delay[i]--;
             end
             // stream: once tvalid is up it stays up until taken (AXI-Stream rule)
             if (have[i] && xfer[i] && !in_tvalid[i] && $urandom_range(0, 99) >= gap_pct) begin
