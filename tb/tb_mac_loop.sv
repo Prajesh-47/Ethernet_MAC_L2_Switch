@@ -76,13 +76,14 @@ module tb_mac_loop;
     always @(posedge gclk) if (s_und) n_underrun++;
 
     // The switch grants a port on this flag, so it must never claim "empty" while
-    // the writer's view of the FIFO holds data. It must also really rise when idle.
+    // the register slice or the writer's view of the FIFO holds data. It must also
+    // really rise when idle.
     int n_empty = 0, n_empty_bad = 0;
     always @(posedge sys_clk) if (tx_empty) begin
         n_empty++;
-        if (dut.tx_fill != 0) begin
+        if (dut.tx_fill != 0 || !dut.skid_empty) begin
             n_empty_bad++; errors++;
-            if (n_empty_bad < 5) $display("ERROR: tx_fifo_empty high with fill %0d at %0t", dut.tx_fill, $time);
+            if (n_empty_bad < 5) $display("ERROR: tx_fifo_empty high with fill %0d, slice empty %0b at %0t", dut.tx_fill, dut.skid_empty, $time);
         end
     end
 
@@ -107,6 +108,12 @@ module tb_mac_loop;
         repeat (10) @(posedge sys_clk); rst_n = 1; repeat (20) @(posedge sys_clk);
         foreach (lens[i]) send(lens[i]);
         for (int i = 0; i < 200; i++) send($urandom_range(1, 1514));
+        // a lone byte into a fully idle TX path: for a moment the only copy is in the
+        // register slice, and tx_fifo_empty must still be low
+        for (int i = 0; i < 10; i++) begin
+            @(posedge sys_clk); while (!tx_empty) @(posedge sys_clk);
+            send(1);
+        end
         repeat (40000) @(posedge sys_clk);
 
         if (ngot != nframes) begin errors++; $display("ERROR: sent %0d frames, %0d came back", nframes, ngot); end

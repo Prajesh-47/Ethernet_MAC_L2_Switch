@@ -23,14 +23,14 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | Check | Result |
 | --- | --- |
 | Unit tests | 8 testbenches (CRC, TX, RX, MAC loopback, ingress buffer, MAC table, switch core, 4-port smoke), all pass |
-| MAC loopback across clocks | 211 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
+| MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
-| Switch, congestion mode (100% load) | 36–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 6,139 cycles (limit 20,000) |
+| Switch, congestion mode (100% load) | 36–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,247 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
-| FPGA (ECP5-45, speed 6) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 69–73 MHz across three seeds, against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
+| FPGA estimate (ECP5-45, speed 8, three seeds) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 98–102 MHz against a 125 MHz minimum (see [the timing log](docs/fpga_timing.md)) |
 
 ## Waveform
 
@@ -63,7 +63,7 @@ make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws doc
 | `make bugs` | rebuild with each injected bug; fails unless its unit test catches it |
 | `make sysbugs` | every injected bug through the whole-switch test (expected results checked) |
 | `make synth` | Yosys synthesis for Xilinx 7-series and ECP5, prints cell counts (needs `yosys`) |
-| `make pnr` | ECP5 place-and-route, prints utilization and Fmax; reports timing without failing (needs `nextpnr-ecp5`) |
+| `make pnr` | ECP5 place-and-route over three seeds, prints utilization and Fmax; reports timing without failing (needs `nextpnr-ecp5`) |
 
 Every target fails unless its test prints `RESULT: PASS`, so CI cannot go green on a failing test.
 
@@ -141,7 +141,7 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 | `tb_crc32` | check value `CRC("123456789") = 0xCBF43926`, residue, single-bit errors detected | 2,000 random messages vs a bit-serial reference |
 | `tb_mac_tx` | preamble, padding, FCS, gap ≥ 12, `tx_er` on a deliberate underrun | 312 frames, half back-to-back |
 | `tb_mac_rx` | verdict for good, bad CRC, runt, oversize, `rx_er`, lost data, noise; FCS stripped | 381 frames, preambles 1–7 bytes |
-| `tb_mac_loop` | both CDC crossings at 5 clock setups; when starved, damage is **flagged, never silent** | 211 frames per setup |
+| `tb_mac_loop` | both CDC crossings at 5 clock setups; the TX empty flag is never wrong; when starved, damage is **flagged, never silent** | 221 frames per setup |
 | `tb_ingress_buf` | a predictive model of every keep/drop decision, incl. buffer filled to the exact last byte; output stable under back-pressure, no gaps inside a frame | 2,019 frames, every drop reason hit |
 | `tb_mac_table` | results vs a model, results follow the table, no stale result after an address change, oldest-first eviction, station moves, arbiter never starves anyone | 100,349 results checked, 1,011 evictions, longest waits 8 cycles (lookup) and 11 (learn) |
 | `tb_switch_core` | forwarding rules, waits for the table result, table changing while a frame waits, AXI-Stream on every output, start only into an empty FIFO, liveness | 6,390 / 6,390 copies, 0 AXI violations |
@@ -178,12 +178,12 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 ## Repository layout
 
 ```
-rtl/          crc32.vh, eth_mac_rx/tx, eth_mac (MAC + CDC), ingress_buf, mac_table,
+rtl/          crc32.vh, eth_mac_rx/tx, axis_skid, eth_mac (MAC + CDC), ingress_buf, mac_table,
               switch_core, eth_switch_4port (top)
 rtl/cdc/      async FIFO, synchronizers, reset sync (from the Asynchronous_FIFO repo)
 tb/           one self-checking testbench per block, plus smoke and randomized switch tests
 syn/          clock targets for the FPGA flow
-docs/         block diagram, waveform and its generator, timing log, roadmap
+docs/         block diagram, waveform and its generator, project guide, timing log, roadmap, ASIC assessment
 .github/      CI: lint + all tests + congestion + bug injection on every push
 ```
 
@@ -194,6 +194,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - [Project guide](docs/project_guide.md): the whole project explained from the start, with no Verilog needed
 - [FPGA timing log](docs/fpga_timing.md): current area and Fmax, how to reproduce them, what each change did and why, and the next timing fixes
 - [Roadmap](docs/roadmap.md): planned phases without physical hardware, from timing and performance to real traffic in simulation, formal proofs and features
+- [ASIC assessment](docs/asic_assessment.md): whether open-source ASIC tools could take this design to a chip layout
 
 ## Limitations
 
@@ -206,8 +207,8 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
 - **Does not meet timing yet, and has never run on hardware** (no board is planned). After place-and-route on an ECP5-45
-  (speed grade 6, I/O pins unconstrained), `sys_clk` reaches 69–73 MHz across three seeds against a
-  156.25 MHz target, and the GMII clocks reach 84–131 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
+  (speed grade 8, three seeds, I/O pins unconstrained), `sys_clk` reaches 98–102 MHz against a 125 MHz
+  minimum, and the GMII clocks reach 111–167 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
 - Simulation verifies the logic around the synchronizers, not metastability itself.
 
 ## License

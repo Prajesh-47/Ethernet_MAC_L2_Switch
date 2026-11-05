@@ -7,22 +7,23 @@ Add a row and a section here whenever a change moves these numbers.
 
 **The design routes but does not meet timing, and it has not run on hardware.**
 
-ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), placement seed 1, I/O pins unconstrained:
+Reference device: ECP5-45 (`LFE5UM-45F`, CABGA381, **speed grade 8**), seeds 1-3, I/O pins unconstrained.
+No board is planned, so these are post-route estimates, not proof the design runs on a chip.
 
 | Clock | Target | Achieved |
 | --- | --- | --- |
-| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **73.4 MHz** (seed 1; 69-73 MHz across three seeds) |
-| `gmii_rx_clk[3:0]` | 125 MHz | 107–122 MHz (93–131 MHz across three seeds) |
-| `gmii_tx_clk[3:0]` | 125 MHz | 84–100 MHz (84–112 MHz across three seeds) |
+| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **98–102 MHz** |
+| `gmii_rx_clk[3:0]` | 125 MHz | 138–167 MHz (all pass) |
+| `gmii_tx_clk[3:0]` | 125 MHz | 111–144 MHz (slowest per seed: 126, 111, 128) |
 
 | Resource | Used | Available |
 | --- | --- | --- |
-| Logic cells (`TRELLIS_COMB`) | 8,508 (19%) | 43,848 |
-| Flip-flops | 3,216 (7%) | 43,848 |
+| Logic cells (`TRELLIS_COMB`) | 8,558 (19%) | 43,848 |
+| Flip-flops | 3,296 (7%) | 43,848 |
 | Block RAM (`DP16KD`) | 8 (7%) | 108 |
 | Distributed RAM write ports | 120 (2%) | 5,481 |
 
-Xilinx 7-series has synthesis results only (1,984 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
+Xilinx 7-series has synthesis results only (1,992 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
 flow here has no Xilinx place-and-route, so there are no Xilinx timing numbers.
 
 ## Reproducing the numbers
@@ -31,18 +32,19 @@ flow here has no Xilinx place-and-route, so there are no Xilinx timing numbers.
 sudo apt install yosys nextpnr-ecp5 fpga-trellis
 
 make synth   # about 1 minute: cell counts for both families, build/synth_*.log
-make pnr     # a few more minutes: utilization and Fmax, full report in build/pnr_ecp5.log
+make pnr     # a few more minutes: three seeds at speed grade 8, reports in build/pnr_ecp5.s<seed>.log
 ```
 
-`make pnr` passes `--timing-allow-fail`, so it reports a timing failure without failing the target.
+`make pnr` passes `--timing-allow-fail`, so it reports a timing failure without failing the target. Change
+the device or seeds with `PNR_SPEED` and `PNR_SEEDS`, such as `make pnr PNR_SPEED=6 PNR_SEEDS="1 2"`.
 Neither target is part of `make test` or CI yet.
 
-To see a critical path, open `build/pnr_ecp5.log` and search for the **last**
+To see a critical path, open a `build/pnr_ecp5.s<seed>.log` and search for the **last**
 `Critical path report for clock` entry naming that clock. Earlier entries are pre-route estimates.
 
 ## History
 
-Each row is post-route unless marked otherwise. All rows use the same device and seed.
+Each row is post-route unless marked otherwise. All rows use speed grade 6 and seed 1, except the last.
 
 | Change | Logic cells | `sys_clk` | Slowest `sys_clk` path afterwards |
 | --- | --- | --- | --- |
@@ -55,6 +57,7 @@ Each row is post-route unless marked otherwise. All rows use the same device and
 | Simplify the ingress length check | 8,467 (19%) | 67.3 MHz | queue read through the destination mask and grant logic to `own_v` |
 | Register the forwarding decision | 8,529 (19%) | 70.4 MHz | buffer-room subtraction through `commit` to the `learn_mac` enables |
 | Shorten the ingress `commit` path | 8,508 (19%) | 73.4 MHz | descriptor length read through `f_last` to `f_state` |
+| Add a register slice before each TX FIFO (**speed grade 8, seeds 1-3**, was 92–97 MHz) | 8,558 (19%) | 98–102 MHz | `mem_we` to `cap_dst` enables, or arbitration to `own_v` |
 
 ### Memory written in an async-reset block
 
@@ -215,40 +218,46 @@ clock domain, instead of 118 pins. It is not in the repo.
   - **Reset:** paths from the synchronized `rst_n` to logic in several ports, with 1.5 ns of logic and
     about 9 ns of routing.
 
+### Register slice before each TX FIFO (`rtl/axis_skid.v`, `rtl/eth_mac.v`)
+
+The path from an ingress buffer ran through the crossbar into a TX FIFO's write pointer logic in one
+cycle. `rtl/cdc/` shouldn't change, so a small register slice now sits in front of each TX FIFO. Its
+`s_tready` and `m_*` outputs all come from flip-flops, and a second register holds the one word that can
+arrive after a stall, so it still moves one word per clock.
+
+`tx_fifo_empty` now also requires the slice to be empty. Otherwise the arbiter could grant a port while its
+previous frame's last bytes were still in the slice. `tb_mac_loop` checks this on every clock. It also now
+sends lone bytes into a fully idle TX path, because a deliberately broken flag passed without that case.
+
 ## Where the time goes now
 
-Routing is 75-85% of each path below. These paths have only 1.4-3.1 ns of logic, so removing logic levels
-will gain less from here. Finding out why the wires are so long is now the main question.
+All three paths are from speed grade 8. Routing is still 66-85% of the `sys_clk` paths, and the worst path
+differs by seed.
 
 | Clock | Slowest path | Delay | Logic / routing |
 | --- | --- | --- | --- |
-| `sys_clk` | `q_rd` -> `q_len` read -> `f_last` -> `f_state` | 13.6 ns | 3.1 / 10.5 ns |
-| `gmii_tx_clk[0]` | `u_rptr.rbin` -> FIFO memory read -> `u_tx.crc` | 11.9 ns | 2.1 / 9.8 ns |
-| `gmii_rx_clk[2]` | `u_rx.rxd` -> preamble check -> `u_rx.crc` enable | 9.4 ns | 1.4 / 8.0 ns |
-
-The GMII paths shown are the slowest clock of each direction in this run. The worst path can differ by
-port because placement differs.
+| `sys_clk`, seed 1 | `wr_ptr` -> `mem_we` -> `cap_dst` enable | 9.8 ns | 1.5 / 8.3 ns |
+| `sys_clk`, seed 2 | `xfer` -> arbitration -> `own_v` | 10.2 ns | 3.3 / 6.9 ns |
+| `sys_clk`, seed 3 | `rr` -> arbitration -> `own_v` | 10.0 ns | 3.4 / 6.6 ns |
 
 ## Next steps
 
 In order:
 
-No FPGA board is available, so the [roadmap](roadmap.md) sets a limit: stop after steps 2 and 3, even if
+No FPGA board is available, so the [roadmap](roadmap.md) sets a limit: stop after the reset work, even if
 `sys_clk` is short of 125 MHz.
 
-1. **Make ECP5-45 speed grade 8 the reference device**, and make it the `make pnr` default.
-2. **Register the crossbar output**, between `switch_core` and the TX FIFOs, without changing `rtl/cdc/`.
-   This needs a two-entry buffer to keep full throughput, and the fork and empty-flag rules must still hold.
-3. **Look at the reset network.** Check why reset appears as a data path, and whether it should use a
+1. **Look at the reset network.** Check why reset appears as a data path, and whether it should use a
    global net or per-port synchronizers.
-4. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
+After that limit, only these remain, if ever needed:
+
+- **Fix the GMII TX paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
    `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
-5. **Add multi-seed runs to `make pnr`**, and report the worst and typical result.
 
 ## Clock targets
 
 - `sys_clk` cannot go below 125 MHz: each port moves one byte per clock at 125 MHz, and a slower
-  system clock starves the TX path. `tb_mac_loop` shows the damage at 100 MHz (188 of 211 frames
+  system clock starves the TX path. `tb_mac_loop` shows the damage at 100 MHz (188 of 221 frames
   flagged bad, none silently corrupt).
 - 125 MHz is the sensible target for ECP5 at speed grade 6. `tb_mac_loop` passes at 125 MHz, but the
   whole-switch tests (`tb_switch`, `tb_switch_smoke`) only run at 156.25 MHz. Add a 125 MHz run before
@@ -308,6 +317,12 @@ These bugs were injected by hand, once each, and are **not** part of `make bugs`
 | `drop_q` ignores `lk_valid` | `tb_switch_core` | caught |
 | `xmask` uses the unregistered mask | `tb_switch_core` | caught, after adding the moving-station phase |
 | `own_v` uses the unregistered mask | `tb_switch_core` | caught |
+| Empty flag ignores the register slice | `tb_mac_loop` | caught, after adding lone bytes into an idle path |
+| Empty flag not cleared by a word entering the slice | `tb_mac_loop` | caught |
+| Slice doesn't store the word after a stall | `tb_mac_loop` | caught |
+| Slice loses the word after a stall | `tb_mac_loop` | caught |
+| Slice sends the new word before the stored one | `tb_mac_loop` | caught |
+| Slice drops `tvalid` for the stored word | `tb_mac_loop` | caught |
 | TX empty flag not cleared by a write | `tb_mac_loop` | caught |
 | TX empty flag never rises | `tb_mac_loop` | caught |
 | RAM read on every cycle, not only on `rd_en` | `tb_ingress_buf` | passes: no behaviour change, since the extra value is never used |

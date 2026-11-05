@@ -272,8 +272,12 @@ proofs. Change them in that repo first.
 
 Connects the receive MAC, transmit MAC and both FIFOs into one port. It also tells the switch when the
 transmit FIFO is empty, which is how the core knows the output is idle. That flag is stored in a
-flip-flop for timing, and a write clears it straight away. So it can be a tick late saying "empty", but
-it never says "empty" while the FIFO holds data.
+flip-flop for timing, and new data clears it straight away. So it can be a tick late saying "empty", but
+it never says "empty" while data is on its way.
+
+It also holds a **register slice** (`rtl/axis_skid.v`) just before the transmit FIFO. This is a pipeline stage
+with a handshake: because `tready` now comes from a flip-flop, the sender learns about a stall one tick late,
+so a spare register catches the one extra byte that can arrive.
 
 ### Ingress buffer (`rtl/ingress_buf.v`)
 
@@ -466,9 +470,15 @@ passed, but the first attempt at synthesis didn't even finish:
 | 7 | One tick had to choose destinations and arbitrate | Split into two ticks | 19% | 70.4 MHz |
 | 8 | A subtraction fed a signal driving 48 flip-flops | Compare pointers, send the request a tick later | 19% | 73.4 MHz |
 
-**What these numbers mean.** About 73 MHz means a tick must last at least 13.6 ns. The minimum for `sys_clk`
+Those rows all used the slowest speed grade. At the fastest grade, the same design reached 92-97 MHz, and:
+
+| Step | What was wrong | Fix | Logic used | `sys_clk` |
+| --- | --- | --- | --- | --- |
+| 9 | One tick ran from an input buffer through the crossbar into a transmit FIFO | Add a register slice | 19% | 98-102 MHz |
+
+**What these numbers mean.** About 100 MHz means a tick must last at least 10 ns. The minimum for `sys_clk`
 is 125 MHz, which is 8 ns. It can't go lower, because each port moves one byte per tick and bytes arrive
-at 125 MHz. So the slowest path must get more than twice as fast.
+at 125 MHz. So the slowest path must get about 25% faster.
 
 **Why it takes several rounds.** Fixing the slowest path only reveals the next slowest. That's normal
 for this work, and is why we fix, measure and repeat.
@@ -499,7 +509,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **In progress:**
 
-- Meeting FPGA timing. It routes, but `sys_clk` reaches about 70 MHz of a required 125 MHz
+- Meeting FPGA timing. It routes, but on the reference device `sys_clk` reaches about 100 MHz of a required 125 MHz
 
 **Out of scope, because no FPGA board is available:**
 
@@ -611,7 +621,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
-Simulation ignores real delays. The slowest path takes 13.6 ns, but the clock needs a tick every 8 ns.
+Simulation ignores real delays. The slowest path takes about 10 ns, but the clock needs a tick every 8 ns.
 It also lacks the RGMII and MDIO support that real boards generally need, though those are out of scope because no board is planned.
 </details>
 

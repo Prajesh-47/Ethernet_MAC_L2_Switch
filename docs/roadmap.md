@@ -6,7 +6,7 @@ correctness, and a demonstration using real network traffic in simulation. Each 
 
 | Phase | Goal | Status |
 | --- | --- | --- |
-| 1 | Bring FPGA timing as close to the target as two more fixes allow | **in progress**: `sys_clk` 92-97 MHz at speed grade 8, target 125 MHz |
+| 1 | Bring FPGA timing as close to the target as two more fixes allow | **in progress**: `sys_clk` 98-102 MHz at speed grade 8, target 125 MHz |
 | 2 | Measure throughput and latency | not started |
 | 3 | Pass real Linux traffic through the simulated switch | not started, virtual network devices checked |
 | 4 | Prove key properties with formal verification | not started |
@@ -31,18 +31,17 @@ behaviour, signal timing at the pins, or metastability behaviour.
 ## Phase 1: finish timing, with a limit
 
 **Reference device: ECP5-45 at speed grade 8**, since no specific chip needs to be supported. Its
-open-source tools run locally and in CI. The current default in `make pnr` is still speed grade 6.
+open-source tools run locally and in CI. `make pnr` now uses it by default, with three seeds, and the
+register slice before each TX FIFO is done.
 
-1. Make speed grade 8 the default, and report several seeds from `make pnr`.
-2. Register the crossbar output, between `switch_core` and the TX FIFOs.
-3. Look at the reset network.
-4. Add a whole-switch test at the chosen system clock, because those tests only run at 156.25 MHz today.
-5. Add `make synth` to CI, and `make pnr` if run time allows.
+1. Look at the reset network.
+2. Add a whole-switch test at the chosen system clock, because those tests only run at 156.25 MHz today.
+3. Add `make synth` to CI, and `make pnr` if run time allows.
 
-**Limit.** Stop after the crossbar and reset fixes, even if `sys_clk` is short of 125 MHz. Without a real
+**Limit.** Stop after the reset work, even if `sys_clk` is short of 125 MHz. Without a real
 chip, more timing work has rapidly falling value. Record the final result and the remaining gap plainly.
 
-Done when the two fixes are measured across seeds and the README states the final area, Fmax and any gap.
+Done when the reset work is measured across seeds and the README states the final area, Fmax and any gap.
 Details are in [fpga_timing.md](fpga_timing.md).
 
 ## Phase 2: measure performance
@@ -116,9 +115,9 @@ All of these can be fully tested in simulation. Start with those that show up in
 
 ## Optional: ASIC flow
 
-An open-source ASIC flow, such as OpenLane with the sky130 process, could produce a chip layout and timing
-estimate without hardware. This hasn't been assessed: `klayout` and `magic` are in `apt`, but `openroad` isn't,
-and the four 4 KB buffers would need memory macros.
+An open-source ASIC flow could produce a chip layout with area, timing and power estimates, and no hardware
+is needed. It looks possible, with memory as the main work, but it hasn't been run. It needs Docker or Nix
+installed, and starts with a small trial. See the [assessment](asic_assessment.md).
 
 ## Smaller follow-ups
 

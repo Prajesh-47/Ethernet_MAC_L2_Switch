@@ -18,7 +18,7 @@
 # Recipe lines start with '>' instead of a TAB (easier to copy-paste).
 .RECIPEPREFIX := >
 CDC    := rtl/cdc/reset_sync.v rtl/cdc/sync_2ff.v rtl/cdc/fifo_mem.v rtl/cdc/wptr_full.v rtl/cdc/rptr_empty.v rtl/cdc/async_fifo.v
-MAC    := rtl/eth_mac_tx.v rtl/eth_mac_rx.v rtl/eth_mac.v
+MAC    := rtl/eth_mac_tx.v rtl/eth_mac_rx.v rtl/axis_skid.v rtl/eth_mac.v
 SW     := rtl/ingress_buf.v rtl/mac_table.v rtl/switch_core.v rtl/eth_switch_4port.v
 VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCALEMOD -Irtl -j 4
 
@@ -144,7 +144,8 @@ sysbugs:
 # nextpnr-ecp5 and reports timing without failing, because it does not close yet.
 RTL        := $(CDC) $(MAC) $(SW)
 PNR_DEVICE ?= --um-45k
-PNR_SPEED  ?= 6
+PNR_SPEED  ?= 8
+PNR_SEEDS  ?= 1 2 3
 synth:
 > @mkdir -p build
 > yosys -q -l build/synth_xc7.log -p "read_verilog -Irtl $(RTL); synth_xilinx -family xc7 -top eth_switch_4port -flatten; tee -o build/synth_xc7.stat stat"
@@ -152,9 +153,13 @@ synth:
 > @for t in xc7 ecp5; do echo "=== $$t"; sed -n '/Number of cells/,$$p' build/synth_$$t.stat; done
 
 pnr: synth
-> nextpnr-ecp5 $(PNR_DEVICE) --package CABGA381 --speed $(PNR_SPEED) --json build/synth_ecp5.json --lpf syn/clocks.lpf --lpf-allow-unconstrained --router router2 --timing-allow-fail --threads 8 --seed 1 --report build/pnr_ecp5.json --log build/pnr_ecp5.log > /dev/null 2>&1
-> @grep -E 'TRELLIS_COMB|TRELLIS_FF:|TRELLIS_RAMW|DP16KD' build/pnr_ecp5.log | tail -4
-> @grep 'Max frequency for clock' build/pnr_ecp5.log | tail -9
+> @for s in $(PNR_SEEDS); do \
+>   nextpnr-ecp5 $(PNR_DEVICE) --package CABGA381 --speed $(PNR_SPEED) --json build/synth_ecp5.json --lpf syn/clocks.lpf --lpf-allow-unconstrained --router router2 --timing-allow-fail --threads 4 --seed $$s --log build/pnr_ecp5.s$$s.log > /dev/null 2>&1 & \
+> done; wait
+> @set -- $(PNR_SEEDS); grep -E 'TRELLIS_COMB|TRELLIS_FF:|TRELLIS_RAMW|DP16KD' build/pnr_ecp5.s$$1.log | tail -4
+> @for s in $(PNR_SEEDS); do \
+>   printf 'seed %s: ' $$s; grep 'Max frequency for clock' build/pnr_ecp5.s$$s.log | tail -9 | sed -E "s/.*clock +'([^']+)': ([0-9.]+) MHz.*/\1 \2/" | awk '/sys_clk/{s=$$2} /rx_clk/{if(!r||$$2<r)r=$$2} /tx_clk/{if(!t||$$2<t)t=$$2} END{if(!s){print "no timing result"; exit 1} printf "sys_clk %.1f MHz, slowest rx %.1f MHz, slowest tx %.1f MHz\n",s,r,t}' || exit 1; \
+> done
 
 test: lint crc tx rx loop ingress table core smoke sim bugs
 
