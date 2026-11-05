@@ -9,11 +9,13 @@
 #   make smoke   milestone 6: whole 4-port switch, 10 directed steps over GMII
 #   make sim     milestone 7: whole switch, randomized, 4 independent rx clocks, 3 seeds
 #   make congest milestone 8: whole switch at 100% load (drops allowed), 3 seeds
+#   make sim125  whole switch at the minimum 125 MHz system clock: smoke, then both loads
 #   make sysbugs milestone 8: every injected bug through the whole-switch test
 #   make all     test + congest + sysbugs (~10 min)
 #   make bugs    rebuild with each injected bug; fails if any test still passes
 #   make test    every test so far
 #   make lint    Verilator -Wall on the whole switch
+#   make synth   FPGA synthesis (yosys), make pnr adds place-and-route (nextpnr-ecp5)
 #   make wave    smoke test with a VCD (build/switch.vcd) + docs/waveform.svg
 # Recipe lines start with '>' instead of a TAB (easier to copy-paste).
 .RECIPEPREFIX := >
@@ -27,7 +29,7 @@ VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCA
 # test would look green in CI)
 run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
 
-.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs test all clean synth pnr
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs sim125 test all clean synth pnr
 # UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
 # the switch top does not use the ingress descriptor's length; nothing else is waived
 lint:
@@ -101,6 +103,17 @@ congest:
 >   echo "$$out" | grep -q "RESULT: PASS" || { echo "$$out" | grep ERROR | head -5; echo "RESULT: FAIL (seed $$s)"; exit 1; }; \
 > done; echo "RESULT: PASS ($(words $(SEEDS)) seeds at 100% load)"
 
+# The system clock's minimum: each port moves one byte per clock at 125 MHz, so
+# there is no margin here. Same rules as sim and congest.
+sim125: smoke
+> @out=$$(./build/obj_smoke/sim +SYS_MHZ=125); echo "smoke at 125 MHz: $$(echo "$$out" | grep -E '^RESULT')"; echo "$$out" | grep -q "RESULT: PASS" || { echo "$$out" | grep -E 'ERROR|FAIL' | head -5; exit 1; }
+> verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --Mdir build/obj_sim $(CDC) $(MAC) $(SW) tb/tb_switch.sv --top-module tb_switch -o sim > build/build_sim.log
+> @for L in 20 100; do for s in $(SEEDS); do \
+>   out=$$(./build/obj_sim/sim +N=300 +LOAD=$$L +SYS_MHZ=125 +verilator+seed+$$s); \
+>   echo "load $$L% seed $$s: $$(echo "$$out" | grep -E '^delivered|^longest|^coverage' | tr '\n' ' ')"; \
+>   echo "$$out" | grep -q "RESULT: PASS" || { echo "$$out" | grep ERROR | head -5; echo "RESULT: FAIL (load $$L%, seed $$s)"; exit 1; }; \
+> done; done; echo "RESULT: PASS (whole switch at 125 MHz, 2 loads, $(words $(SEEDS)) seeds)"
+
 wave:
 > @mkdir -p build
 > verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --trace --Mdir build/obj_wave $(CDC) $(MAC) $(SW) tb/tb_switch_smoke.sv --top-module tb_switch_smoke -o sim > build/build_wave.log
@@ -161,7 +174,7 @@ pnr: synth
 >   printf 'seed %s: ' $$s; grep 'Max frequency for clock' build/pnr_ecp5.s$$s.log | tail -9 | sed -E "s/.*clock +'([^']+)': ([0-9.]+) MHz.*/\1 \2/" | awk '/sys_clk/{s=$$2} /rx_clk/{if(!r||$$2<r)r=$$2} /tx_clk/{if(!t||$$2<t)t=$$2} END{if(!s){print "no timing result"; exit 1} printf "sys_clk %.1f MHz, slowest rx %.1f MHz, slowest tx %.1f MHz\n",s,r,t}' || exit 1; \
 > done
 
-test: lint crc tx rx loop ingress table core smoke sim bugs
+test: lint crc tx rx loop ingress table core smoke sim sim125 bugs
 
 all: test congest sysbugs
 

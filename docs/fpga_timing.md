@@ -37,7 +37,7 @@ make pnr     # a few more minutes: three seeds at speed grade 8, reports in buil
 
 `make pnr` passes `--timing-allow-fail`, so it reports a timing failure without failing the target. Change
 the device or seeds with `PNR_SPEED` and `PNR_SEEDS`, such as `make pnr PNR_SPEED=6 PNR_SEEDS="1 2"`.
-Neither target is part of `make test` or CI yet.
+`make synth` runs in CI. `make pnr` doesn't, and neither is part of `make test`.
 
 To see a critical path, open a `build/pnr_ecp5.s<seed>.log` and search for the **last**
 `Critical path report for clock` entry naming that clock. Earlier entries are pre-route estimates.
@@ -253,7 +253,7 @@ differs by seed.
 
 No FPGA board is available, so the [roadmap](roadmap.md) set a limit: stop after the crossbar and reset work,
 even if `sys_clk` is short of 125 MHz. **That limit has been reached.** The gap is about 25%, and no further
-timing fixes are planned. The two remaining phase 1 tasks are in the roadmap.
+timing fixes are planned.
 
 If this work is ever resumed, these are the places to start:
 
@@ -268,9 +268,8 @@ If this work is ever resumed, these are the places to start:
 - `sys_clk` cannot go below 125 MHz: each port moves one byte per clock at 125 MHz, and a slower
   system clock starves the TX path. `tb_mac_loop` shows the damage at 100 MHz (188 of 221 frames
   flagged bad, none silently corrupt).
-- 125 MHz is the sensible target for ECP5 at speed grade 6. `tb_mac_loop` passes at 125 MHz, but the
-  whole-switch tests (`tb_switch`, `tb_switch_smoke`) only run at 156.25 MHz. Add a 125 MHz run before
-  relying on that target.
+- 125 MHz is verified as the real minimum in simulation. `make sim125` runs the whole switch there, passing
+  the smoke test and both loads. Run by hand at 120 MHz and 100 MHz, `tb_switch` fails with TX underruns.
 - No board is available, so there is no required chip. The reference device for these numbers will be
   ECP5-45 at speed grade 8, and results are post-route estimates, not proof it runs on hardware.
 

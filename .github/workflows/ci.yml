@@ -2,28 +2,35 @@
 # Every step fails if any test does not print RESULT: PASS.
 name: eth-switch-ci
 on: [push, pull_request]
+permissions:
+  contents: read              # read-only token: nothing here needs to write to the repo
 jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 45          # a hung simulation must not run for hours
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4, pinned to a commit
+        with:
+          persist-credentials: false
       - name: Install Verilator (Ubuntu 24.04 ships 5.020, the version this was verified with)
         run: |
           sudo apt-get update
-          sudo apt-get install -y verilator make
+          sudo apt-get install -y verilator yosys make
           verilator --version
+          yosys -V
       - name: Lint (Verilator -Wall)
         run: make lint
-      - name: Unit tests, loopback, smoke, randomized switch, unit-level bug injection
+      - name: Unit tests, loopback, smoke, randomized switch at 156.25 and 125 MHz, unit-level bug injection
         run: make test
+      - name: FPGA synthesis (a change must not stop the design synthesizing)
+        run: make synth
       - name: Congestion mode (100% load, 3 seeds)
         run: make congest
       - name: Whole-switch bug injection
         run: make sysbugs
       - name: Keep the logs if something failed
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4, pinned to a commit
         with:
           name: logs
           path: build/*.log

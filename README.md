@@ -24,7 +24,7 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | --- | --- |
 | Unit tests | 8 testbenches (CRC, TX, RX, MAC loopback, ingress buffer, MAC table, switch core, 4-port smoke), all pass |
 | MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
-| Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds |
+| Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
 | Switch, congestion mode (100% load) | 36–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,247 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
@@ -46,7 +46,7 @@ the core wins all three other ports in the same cycle, and three identical copie
 # Ubuntu 24.04 (also works in WSL2): Verilator 5.020
 sudo apt install verilator make build-essential
 
-make test       # lint + every unit test + randomized switch + unit-level bug injection
+make test       # lint + every unit test + randomized switch at 156.25 and 125 MHz + unit-level bug injection
 make all        # test + congestion mode + whole-switch bug injection  (~10 min)
 make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws docs/waveform.svg
 ```
@@ -60,6 +60,7 @@ make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws doc
 | `make smoke` | the 4-port switch, 10 directed steps over GMII |
 | `make sim` | the 4-port switch under random traffic, no-drop mode, 3 seeds |
 | `make congest` | the same at 100% load, drops allowed, 3 seeds |
+| `make sim125` | the whole switch at the 125 MHz minimum system clock: smoke test, then both loads, 3 seeds |
 | `make bugs` | rebuild with each injected bug; fails unless its unit test catches it |
 | `make sysbugs` | every injected bug through the whole-switch test (expected results checked) |
 | `make synth` | Yosys synthesis for Xilinx 7-series and ECP5, prints cell counts (needs `yosys`) |
@@ -184,7 +185,7 @@ rtl/cdc/      async FIFO, synchronizers, reset sync (from the Asynchronous_FIFO 
 tb/           one self-checking testbench per block, plus smoke and randomized switch tests
 syn/          clock targets for the FPGA flow
 docs/         block diagram, waveform and its generator, project guide, timing log, roadmap, ASIC assessment
-.github/      CI: lint + all tests + congestion + bug injection on every push
+.github/      CI: lint + all tests + FPGA synthesis + congestion + bug injection on every push
 ```
 
 About 1,400 lines of RTL and 1,750 lines of testbench.

@@ -20,7 +20,13 @@
 // -----------------------------------------------------------------------------
 `timescale 1ns/1ps
 module tb_switch_smoke;
-    logic sys_clk = 0; always #3.2 sys_clk = ~sys_clk;              // 156.25 MHz
+    // system clock: +SYS_MHZ=<f>, default 156.25
+    logic sys_clk = 0;
+    initial begin
+        real sys_mhz = 156.25;
+        void'($value$plusargs("SYS_MHZ=%f", sys_mhz));
+        forever #(500.0 / sys_mhz) sys_clk = ~sys_clk;
+    end
     logic gtx_clk = 0; always #4.0 gtx_clk = ~gtx_clk;              // 125 MHz transmit
     logic rclk = 0;    initial begin #1.3; forever #4.0 rclk = ~rclk; end   // 125 MHz receive, other phase
     logic rst_n = 0;

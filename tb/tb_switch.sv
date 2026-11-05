@@ -23,6 +23,7 @@
 // Every coverage bin must be hit, or the test fails.
 //
 // Plusargs: +N=<frames per port> (default 300)  +LOAD=<% of line rate> (default 30)
+//           +SYS_MHZ=<system clock> (default 156.25)
 //   LOAD <= 30 : no-drop mode -- every expected copy must arrive
 //   LOAD  > 30 : congestion mode (milestone 8) -- drops allowed, but what does
 //                arrive must be intact and in order, nobody may starve, and at
@@ -31,7 +32,13 @@
 `timescale 1ns/1ps
 module tb_switch;
     // ---------------- clocks ----------------
-    logic sys_clk = 0; always #3.2 sys_clk = ~sys_clk;          // 156.25 MHz
+    // system clock: +SYS_MHZ=<f>, default 156.25
+    logic sys_clk = 0;
+    initial begin
+        real sys_mhz = 156.25;
+        void'($value$plusargs("SYS_MHZ=%f", sys_mhz));
+        forever #(500.0 / sys_mhz) sys_clk = ~sys_clk;
+    end
     logic gtx_clk = 0; always #4.0 gtx_clk = ~gtx_clk;          // 125 MHz
     // independent rx clocks: same nominal 125 MHz, different phases.
     // Four separate signals, packed with an assign: driving bits of ONE vector

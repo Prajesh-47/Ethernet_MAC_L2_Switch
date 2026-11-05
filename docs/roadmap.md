@@ -6,8 +6,8 @@ correctness, and a demonstration using real network traffic in simulation. Each 
 
 | Phase | Goal | Status |
 | --- | --- | --- |
-| 1 | Bring FPGA timing as close to the target as two more fixes allow | **timing limit reached**: `sys_clk` 98-102 MHz at speed grade 8, target 125 MHz. Two small tasks remain |
-| 2 | Measure throughput and latency | not started |
+| 1 | Bring FPGA timing as close to the target as two more fixes allow | **done**: `sys_clk` 98-102 MHz at speed grade 8, about 25% short of the 125 MHz target |
+| 2 | Measure throughput and latency | next |
 | 3 | Pass real Linux traffic through the simulated switch | not started, virtual network devices checked |
 | 4 | Prove key properties with formal verification | not started |
 | 5 | Add features, tested in simulation | not started |
@@ -28,21 +28,19 @@ never "runs on an FPGA".
 **What this project can't claim.** The design has never run on hardware. Simulation doesn't prove real PHY
 behaviour, signal timing at the pins, or metastability behaviour.
 
-## Phase 1: finish timing, with a limit
+## Phase 1: finish timing, with a limit (done)
 
 **Reference device: ECP5-45 at speed grade 8**, since no specific chip needs to be supported. Its
 open-source tools run locally and in CI. `make pnr` now uses it by default, with three seeds. The crossbar
 register slice is done, and the reset network was examined and left as it is.
 
-**The limit has been reached, about 25% short of 125 MHz, so no more timing fixes are planned.** Remaining:
+**Phase 1 is finished, about 25% short of 125 MHz.** Without a real chip, more timing work has rapidly falling
+value, so no more timing fixes are planned.
 
-1. Add a whole-switch test at the chosen system clock, because those tests only run at 156.25 MHz today.
-2. Add `make synth` to CI, and `make pnr` if run time allows.
+- The whole switch is tested at the 125 MHz minimum with `make sim125`, which is part of `make test`.
+- `make synth` runs in CI. `make pnr` doesn't, because it needs `nextpnr-ecp5` and more run time.
+- The README states the final area, Fmax and gap.
 
-**Why stop here.** Without a real chip, more timing work has rapidly falling value. The README states the
-final area, Fmax and gap.
-
-Done when those two tasks are finished.
 Details are in [fpga_timing.md](fpga_timing.md).
 
 ## Phase 2: measure performance
