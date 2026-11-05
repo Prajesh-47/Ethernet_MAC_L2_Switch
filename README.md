@@ -30,7 +30,7 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
-| FPGA (ECP5-45, speed 6, one seed) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 70.4 MHz against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
+| FPGA (ECP5-45, speed 6) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 69–73 MHz across three seeds, against 156.25 MHz (see [the timing log](docs/fpga_timing.md)) |
 
 ## Waveform
 
@@ -206,8 +206,8 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 - **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
 - **Does not meet timing yet, and has not run on hardware.** After place-and-route on an ECP5-45
-  (speed grade 6, one seed, I/O pins unconstrained), `sys_clk` reaches 70.4 MHz against a 156.25 MHz
-  target and the GMII clocks reach 100–129 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
+  (speed grade 6, I/O pins unconstrained), `sys_clk` reaches 69–73 MHz across three seeds against a
+  156.25 MHz target, and the GMII clocks reach 84–131 MHz against 125 MHz. See the [timing log](docs/fpga_timing.md).
 - Simulation verifies the logic around the synchronizers, not metastability itself.
 
 ## License

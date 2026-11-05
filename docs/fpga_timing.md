@@ -7,22 +7,22 @@ Add a row and a section here whenever a change moves these numbers.
 
 **The design routes but does not meet timing, and it has not run on hardware.**
 
-ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), one placement seed, I/O pins unconstrained:
+ECP5-45 (`LFE5UM-45F`, CABGA381, speed grade 6), placement seed 1, I/O pins unconstrained:
 
 | Clock | Target | Achieved |
 | --- | --- | --- |
-| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **70.4 MHz** |
-| `gmii_rx_clk[3:0]` | 125 MHz | 117–129 MHz (one of the four passes) |
-| `gmii_tx_clk[3:0]` | 125 MHz | 100–105 MHz |
+| `sys_clk` | 156.25 MHz (125 MHz is the minimum, see [Clock targets](#clock-targets)) | **73.4 MHz** (seed 1; 69-73 MHz across three seeds) |
+| `gmii_rx_clk[3:0]` | 125 MHz | 107–122 MHz (93–131 MHz across three seeds) |
+| `gmii_tx_clk[3:0]` | 125 MHz | 84–100 MHz (84–112 MHz across three seeds) |
 
 | Resource | Used | Available |
 | --- | --- | --- |
-| Logic cells (`TRELLIS_COMB`) | 8,529 (19%) | 43,848 |
-| Flip-flops | 3,208 (7%) | 43,848 |
+| Logic cells (`TRELLIS_COMB`) | 8,508 (19%) | 43,848 |
+| Flip-flops | 3,216 (7%) | 43,848 |
 | Block RAM (`DP16KD`) | 8 (7%) | 108 |
 | Distributed RAM write ports | 120 (2%) | 5,481 |
 
-Xilinx 7-series has synthesis results only (1,976 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
+Xilinx 7-series has synthesis results only (1,984 `FDCE` flip-flops, 4 `RAMB36E1`). The open-source
 flow here has no Xilinx place-and-route, so there are no Xilinx timing numbers.
 
 ## Reproducing the numbers
@@ -54,6 +54,7 @@ Each row is post-route unless marked otherwise. All rows use the same device and
 | Register the TX FIFO empty flag | 8,629 (19%) | 62.3 MHz | ingress commit decision, through a 32-bit carry chain |
 | Simplify the ingress length check | 8,467 (19%) | 67.3 MHz | queue read through the destination mask and grant logic to `own_v` |
 | Register the forwarding decision | 8,529 (19%) | 70.4 MHz | buffer-room subtraction through `commit` to the `learn_mac` enables |
+| Shorten the ingress `commit` path | 8,508 (19%) | 73.4 MHz | descriptor length read through `f_last` to `f_state` |
 
 ### Memory written in an async-reset block
 
@@ -159,16 +160,45 @@ the answer two clocks before `xfer` rises, and coverage fails unless some answer
 moment. Separately, `tb_switch` missed all six bugs below in a 100%-load run. Its stations never move,
 and it doesn't check the filter counters.
 
+### Ingress `commit` path (`rtl/ingress_buf.v`)
+
+Two changes, neither of which changes which frames are kept:
+
+- **Room check.** `room` used a 13-bit subtraction. The buffer is full exactly when the pointers match
+  and their wrap bits differ, so a comparison gives the same answer with no carry chain.
+- **Learn request.** `commit` directly enabled all 48 `learn_mac` flip-flops. The request now comes one
+  cycle later from `commit_q`. `cap_src` is still valid then, because the next frame's first 6 bytes
+  only go to `cap_dst`.
+
+Congestion-mode results stayed identical.
+
+## Seeds and clock targets
+
+Run on the design above, with `nextpnr-ecp5 --seed N`:
+
+| Seed | `sys_clk` | RX clocks | TX clocks |
+| --- | --- | --- | --- |
+| 1 | 73.4 MHz | 107–122 MHz | 84–100 MHz |
+| 2 | 69.1 MHz | 93–124 MHz | 95–100 MHz |
+| 3 | 69.3 MHz | 111–131 MHz | 107–112 MHz |
+
+- **Seed variation is about 4 MHz on `sys_clk`, and up to about 30 MHz on the GMII clocks.** The last few
+  history rows differ by 3-5 MHz, and each used only seed 1, so those steps are not reliable measurements
+  on their own. Compare designs across several seeds from here on.
+- **The `sys_clk` target made no difference.** A 125 MHz target gave exactly the same results as 156.25
+  MHz for each of seeds 1-3. Both are far out of reach, so this says nothing about how the tool behaves
+  near its target.
+
 ## Where the time goes now
 
-Routing is 70-80% of each path below. The `sys_clk` path has only 2.9 ns of logic, so removing logic
-levels will gain less from here. Long, high fan-out nets now matter more.
+Routing is 75-85% of each path below. These paths have only 1.4-3.1 ns of logic, so removing logic levels
+will gain less from here. Finding out why the wires are so long is now the main question.
 
 | Clock | Slowest path | Delay | Logic / routing |
 | --- | --- | --- | --- |
-| `sys_clk` | `rd_ptr` -> `used` subtract -> `room` -> `commit` -> `learn_mac` enable | 14.2 ns | 2.9 / 11.3 ns |
-| `gmii_tx_clk[2]` | `u_tx.st` -> `s_tready` -> FIFO read pointer -> `rempty_next` | 10.0 ns | 2.9 / 7.1 ns |
-| `gmii_rx_clk[0]` | `rx_rst_n` -> FIFO write pointer -> `wfull_next` | 8.5 ns | 2.8 / 5.7 ns |
+| `sys_clk` | `q_rd` -> `q_len` read -> `f_last` -> `f_state` | 13.6 ns | 3.1 / 10.5 ns |
+| `gmii_tx_clk[0]` | `u_rptr.rbin` -> FIFO memory read -> `u_tx.crc` | 11.9 ns | 2.1 / 9.8 ns |
+| `gmii_rx_clk[2]` | `u_rx.rxd` -> preamble check -> `u_rx.crc` enable | 9.4 ns | 1.4 / 8.0 ns |
 
 The GMII paths shown are the slowest clock of each direction in this run. The worst path can differ by
 port because placement differs.
@@ -177,11 +207,11 @@ port because placement differs.
 
 In order:
 
-1. **Shorten the ingress `commit` path** in `rtl/ingress_buf.v`: replace the `used` subtraction with a
-   pointer comparison, and stop `commit` directly enabling all of `learn_mac`.
+1. **Find out why routing dominates, before more RTL changes.** Two cheap experiments: a faster speed
+   grade (`--speed 8`), and a build without 118 unconstrained I/O pins pulling logic apart.
 2. **Fix the GMII paths** in `rtl/eth_mac_tx.v` and `rtl/eth_mac_rx.v`, such as precomputing the
    `nbytes` comparison. The FIFO pointer paths need more care, see [Constraints](#constraints-on-this-work).
-3. **Try more seeds** with `--seed` once the results are close. One seed says little about margin.
+3. **Add multi-seed runs to `make pnr`**, and report the worst and typical result.
 
 ## Clock targets
 
@@ -225,6 +255,10 @@ These bugs were injected by hand, once each, and are **not** part of `make bugs`
 
 | Injected bug | Test | Result |
 | --- | --- | --- |
+| Room check ignores the wrap bit | `tb_ingress_buf` | caught |
+| Room check always true | `tb_ingress_buf` | caught |
+| Learn request ignores the multicast check | `tb_ingress_buf` | caught |
+| Learn request never raised | `tb_ingress_buf` | caught |
 | Prefetch ignores FIFO room | `tb_ingress_buf` | caught |
 | Prefetch allows only one byte at a time | `tb_ingress_buf` | caught |
 | Space released on fetch, not delivery | `tb_ingress_buf` | caught |

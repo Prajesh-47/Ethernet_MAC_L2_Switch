@@ -463,13 +463,21 @@ passed, but the first attempt at synthesis didn't even finish:
 | 5 | The transmit FIFO's fill calculation ran straight into the arbiter | Store the "empty" flag in a flip-flop | 19% | 62.3 MHz |
 | 6 | A length check accidentally used 32-bit arithmetic | Rewrite it without the addition | 19% | 67.3 MHz |
 | 7 | One tick had to choose destinations and arbitrate | Split into two ticks | 19% | 70.4 MHz |
+| 8 | A subtraction fed a signal driving 48 flip-flops | Compare pointers, send the request a tick later | 19% | 73.4 MHz |
 
-**What these numbers mean.** 70.4 MHz means a tick must last at least 14.2 ns. The minimum for `sys_clk`
+**What these numbers mean.** About 73 MHz means a tick must last at least 13.6 ns. The minimum for `sys_clk`
 is 125 MHz, which is 8 ns. It can't go lower, because each port moves one byte per tick and bytes arrive
 at 125 MHz. So the slowest path must get more than twice as fast.
 
 **Why it takes several rounds.** Fixing the slowest path only reveals the next slowest. That's normal
 for this work, and is why we fix, measure and repeat.
+
+**Why one measurement isn't enough.** Placement starts from a random seed. Three seeds of the same design
+gave 69-73 MHz, so a gain of 3 MHz might only be luck. The later rows in this table are less certain than
+they look.
+
+**Wires are now the main delay.** In the slowest paths, logic takes 1.4-3.1 ns and routing takes 8-10 ns.
+That points away from the code's logic and towards how the design sits on the chip.
 
 Full details are in the [timing log](fpga_timing.md).
 
@@ -486,7 +494,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **In progress:**
 
-- Meeting FPGA timing. It routes, but `sys_clk` reaches 70.4 MHz of a required 125 MHz
+- Meeting FPGA timing. It routes, but `sys_clk` reaches about 70 MHz of a required 125 MHz
 
 **Not done, so it can't yet connect to a real network:**
 
@@ -594,7 +602,7 @@ Block RAM answers one tick after being asked. The small FIFO supplies bytes with
 
 <details><summary>All tests pass, so why couldn't this run on a chip yet?</summary>
 
-Simulation ignores real delays. The slowest path takes 14.2 ns, but the clock needs a tick every 8 ns.
+Simulation ignores real delays. The slowest path takes 13.6 ns, but the clock needs a tick every 8 ns.
 It also lacks the RGMII and MDIO support that real boards generally need.
 </details>
 

@@ -74,11 +74,12 @@ module ingress_buf #(
     wire       q_full  = (q_wr[2:0] == q_rd[2:0]) && (q_wr[3] != q_rd[3]);
     wire       q_empty = (q_wr == q_rd);
 
-    wire [AW:0] used = wr_ptr - rd_ptr;
-    wire        room = (used < DEPTH);
+    // Full when the pointers match but one has wrapped once more than the other.
+    wire        room = !((wr_ptr[AW] != rd_ptr[AW]) && (wr_ptr[AW-1:0] == rd_ptr[AW-1:0]));
     wire        beat = s_tvalid;               // s_tready is always 1
     assign s_tready = 1'b1;
 
+    reg  commit_q;
     wire mem_we = beat && room && !ovf;
     wire commit = beat && s_tlast && !s_tuser && !ovf && room && !q_full && (wcnt >= 13);    // this byte is number wcnt + 1
 
@@ -99,7 +100,7 @@ module ingress_buf #(
         if (!rst_n) begin
             wr_ptr <= 0; frm_start <= 0; wcnt <= 0; ovf <= 0;
             cap_dst <= 0; cap_src <= 0; q_wr <= 0;
-            learn_valid <= 0; learn_mac <= 0; stat_drop <= 0;
+            learn_valid <= 0; learn_mac <= 0; stat_drop <= 0; commit_q <= 0;
         end else begin
             stat_drop <= 1'b0;
             if (learn_ack) learn_valid <= 1'b0;
@@ -118,8 +119,6 @@ module ingress_buf #(
                         wr_ptr        <= wr_ptr + 1'b1;
                         frm_start     <= wr_ptr + 1'b1;
                         q_wr          <= q_wr + 1'b1;
-                        // learn the source, unless it is a multicast address (invalid as a source)
-                        if (!cap_src[40]) begin learn_valid <= 1'b1; learn_mac <= cap_src; end
                     end else begin
 `ifndef BUG_NO_REWIND
                         wr_ptr    <= frm_start;               // rewind: the frame never happened
@@ -129,6 +128,11 @@ module ingress_buf #(
                     wcnt <= 0; ovf <= 1'b0;
                 end
             end
+            // Learn the source, unless it is a multicast address (invalid as a source).
+            // A cycle after commit, so commit does not drive all of learn_mac directly.
+            // cap_src is still this frame's: the next frame's first 6 bytes go to cap_dst.
+            commit_q <= commit;
+            if (commit_q && !cap_src[40]) begin learn_valid <= 1'b1; learn_mac <= cap_src; end
         end
     end
 
