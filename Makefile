@@ -14,6 +14,8 @@
 #   make all     test + congest + sysbugs (~10 min)
 #   make bugs    rebuild with each injected bug; fails if any test still passes
 #   make test    every test so far
+#   make perf    throughput and latency sweep, writes docs/perf/ (a few minutes)
+#   make perfcheck  fixed points against limits, fails if the switch gets slower
 #   make lint    Verilator -Wall on the whole switch
 #   make synth   FPGA synthesis (yosys), make pnr adds place-and-route (nextpnr-ecp5)
 #   make wave    smoke test with a VCD (build/switch.vcd) + docs/waveform.svg
@@ -29,7 +31,7 @@ VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCA
 # test would look green in CI)
 run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
 
-.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs sim125 test all clean synth pnr
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs sim125 perf_build perf perfcheck test all clean synth pnr
 # UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
 # the switch top does not use the ingress descriptor's length; nothing else is waived
 lint:
@@ -114,6 +116,20 @@ sim125: smoke
 >   echo "$$out" | grep -q "RESULT: PASS" || { echo "$$out" | grep ERROR | head -5; echo "RESULT: FAIL (load $$L%, seed $$s)"; exit 1; }; \
 > done; done; echo "RESULT: PASS (whole switch at 125 MHz, 2 loads, $(words $(SEEDS)) seeds)"
 
+# tb_perf, shared by the performance targets
+perf_build:
+> @mkdir -p build
+> verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --Mdir build/obj_perf $(CDC) $(MAC) $(SW) tb/tb_perf.sv --top-module tb_perf -o sim > build/build_perf.log
+
+# full sweep (a few minutes): docs/perf/results.csv and the charts in docs/perf/
+perf: perf_build
+> python3 docs/perf_sweep.py
+> python3 docs/gen_perf_charts.py
+
+# a few fixed points against limits, so a change can't quietly lose throughput
+perfcheck: perf_build
+> @python3 docs/perf_check.py
+
 wave:
 > @mkdir -p build
 > verilator $(VFLAGS) -Wno-PINCONNECTEMPTY --trace --Mdir build/obj_wave $(CDC) $(MAC) $(SW) tb/tb_switch_smoke.sv --top-module tb_switch_smoke -o sim > build/build_wave.log
@@ -174,7 +190,7 @@ pnr: synth
 >   printf 'seed %s: ' $$s; grep 'Max frequency for clock' build/pnr_ecp5.s$$s.log | tail -9 | sed -E "s/.*clock +'([^']+)': ([0-9.]+) MHz.*/\1 \2/" | awk '/sys_clk/{s=$$2} /rx_clk/{if(!r||$$2<r)r=$$2} /tx_clk/{if(!t||$$2<t)t=$$2} END{if(!s){print "no timing result"; exit 1} printf "sys_clk %.1f MHz, slowest rx %.1f MHz, slowest tx %.1f MHz\n",s,r,t}' || exit 1; \
 > done
 
-test: lint crc tx rx loop ingress table core smoke sim sim125 bugs
+test: lint crc tx rx loop ingress table core smoke sim sim125 perfcheck bugs
 
 all: test congest sysbugs
 

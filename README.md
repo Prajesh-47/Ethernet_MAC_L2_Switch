@@ -24,9 +24,10 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | --- | --- |
 | Unit tests | 8 testbenches (CRC, TX, RX, MAC loopback, ingress buffer, MAC table, switch core, 4-port smoke), all pass |
 | MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
-| Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,344 / 1,344**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
+| Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,321 / 1,321**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
+| Throughput and latency | about **170 ns** latency without contention; **full line rate** on all ports without contention from 512 bytes up (98.9% at 64); random traffic saturates at **70–75%** ([details](docs/performance.md)) |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
-| Switch, congestion mode (100% load) | 36–44% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,247 cycles (limit 20,000) |
+| Switch, congestion mode (100% load) | 38–46% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,989 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
@@ -40,13 +41,22 @@ the core wins all three other ports in the same cycle, and three identical copie
 
 <p align="center"><img src="docs/waveform.svg" alt="Simulation waveform" width="900"></p>
 
+## Performance
+
+Measured in simulation at a 156.25 MHz system clock, over 594 runs across 3 traffic patterns, 6 frame sizes and 11 loads.
+Random traffic levels off at 70–75% of line rate because of head-of-line blocking (see [Limitations](#limitations)),
+while the same hardware reaches full rate when ports don't compete. Every delivered frame was checked byte for byte.
+See [the full results](docs/performance.md).
+
+<p align="center"><img src="docs/perf/throughput.svg" alt="Delivered throughput against offered load" width="900"></p>
+
 ## Quick start
 
 ```bash
 # Ubuntu 24.04 (also works in WSL2): Verilator 5.020
 sudo apt install verilator make build-essential
 
-make test       # lint + every unit test + randomized switch at 156.25 and 125 MHz + unit-level bug injection
+make test       # lint + every unit test + randomized switch at 156.25 and 125 MHz + performance limits + unit-level bug injection
 make all        # test + congestion mode + whole-switch bug injection  (~10 min)
 make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws docs/waveform.svg
 ```
@@ -60,6 +70,8 @@ make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws doc
 | `make smoke` | the 4-port switch, 10 directed steps over GMII |
 | `make sim` | the 4-port switch under random traffic, no-drop mode, 3 seeds |
 | `make congest` | the same at 100% load, drops allowed, 3 seeds |
+| `make perf` | throughput and latency sweep, writes `docs/perf/`, about 4 minutes |
+| `make perfcheck` | fixed performance points against limits, fails if the switch gets slower |
 | `make sim125` | the whole switch at the 125 MHz minimum system clock: smoke test, then both loads, 3 seeds |
 | `make bugs` | rebuild with each injected bug; fails unless its unit test catches it |
 | `make sysbugs` | every injected bug through the whole-switch test (expected results checked) |
@@ -147,7 +159,8 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 | `tb_mac_table` | results vs a model, results follow the table, no stale result after an address change, oldest-first eviction, station moves, arbiter never starves anyone | 100,349 results checked, 1,011 evictions, longest waits 8 cycles (lookup) and 11 (learn) |
 | `tb_switch_core` | forwarding rules, waits for the table result, table changing while a frame waits, AXI-Stream on every output, start only into an empty FIFO, liveness | 6,390 / 6,390 copies, 0 AXI violations |
 | `tb_switch_smoke` | 10 directed steps over GMII: learn, unicast, flood, filter, bad frame not learned, station move, contention | all 10 steps exact |
-| `tb_switch` | whole switch: 4 independent RX clocks, reference model, ordered scoreboard per port pair, 24 coverage bins, liveness, internal AXI check | ~1,300 copies per seed, both modes |
+| `tb_perf` | whole-switch throughput and latency across patterns, sizes and loads; every frame still checked byte for byte | 594 runs |
+| `tb_switch` | whole switch: 4 independent RX clocks, legal gaps checked on the wires, reference model, ordered scoreboard per port pair, 24 coverage bins, liveness, internal AXI check | ~1,300 copies per seed, both modes |
 
 ### Injected bugs
 
@@ -184,15 +197,17 @@ rtl/          crc32.vh, eth_mac_rx/tx, axis_skid, eth_mac (MAC + CDC), ingress_b
 rtl/cdc/      async FIFO, synchronizers, reset sync (from the Asynchronous_FIFO repo)
 tb/           one self-checking testbench per block, plus smoke and randomized switch tests
 syn/          clock targets for the FPGA flow
-docs/         block diagram, waveform and its generator, project guide, timing log, roadmap, ASIC assessment
+docs/         block diagram, waveform and its generator, project guide, performance results and charts,
+              timing log, roadmap, ASIC assessment
 .github/      CI: lint + all tests + FPGA synthesis + congestion + bug injection on every push
 ```
 
-About 1,400 lines of RTL and 1,750 lines of testbench.
+About 1,500 lines of RTL and 2,150 lines of testbench.
 
 ## Further documentation
 
 - [Project guide](docs/project_guide.md): the whole project explained from the start, with no Verilog needed
+- [Performance](docs/performance.md): throughput and latency results, how they're measured, and their limits
 - [FPGA timing log](docs/fpga_timing.md): current area and Fmax, how to reproduce them, what each change did and why, and the next timing fixes
 - [Roadmap](docs/roadmap.md): planned phases without physical hardware, from timing and performance to real traffic in simulation, formal proofs and features
 - [ASIC assessment](docs/asic_assessment.md): whether open-source ASIC tools could take this design to a chip layout
@@ -200,7 +215,7 @@ About 1,400 lines of RTL and 1,750 lines of testbench.
 ## Limitations
 
 - **Head-of-line blocking.** One input queue per port: a frame waiting for a busy output blocks
-  everything behind it, even frames for idle outputs. That is a large part of the 36–44% drop
+  everything behind it, even frames for idle outputs. That is a large part of the 38–46% drop
   rate at 100% load. Virtual output queues would fix it.
 - **Small, simple table.** 16 entries, no aging timer (a real switch ages entries out after ~300 s),
   oldest-first replacement.

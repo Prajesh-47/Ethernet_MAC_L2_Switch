@@ -148,8 +148,27 @@ module tb_switch;
         rxd[8*p +: 8] = 8'hD5; wait_rx(p);
         foreach (q[i]) begin rxd[8*p +: 8] = q[i]; wait_rx(p); end
         rx_dv[p] = 0; rxd[8*p +: 8] = 0;
-        // inter-frame gap: 12 minimum, stretched so this port offers LOAD% of line rate
-        repeat (12 + $urandom_range(0, 4) + (q.size() + 20) * (100 - LOAD) / LOAD) wait_rx(p);
+        // inter-frame gap: 12 minimum, stretched so this port offers LOAD% of line rate.
+        // A `for` loop, because `repeat` ran about a quarter of its count here with
+        // all four ports active (seen on Verilator 5.020). rx_gap_monitor checks the result.
+        begin
+            int g = 12 + $urandom_range(0, 4) + (q.size() + 20) * (100 - LOAD) / LOAD;
+            for (int w = 0; w < g; w++) wait_rx(p);
+        end
+    endtask
+
+    // Independent check of the generator, on the wires: under 12 bytes of gap is illegal
+    // Ethernet and would silently overdrive the switch.
+    int rx_gap_min[4] = '{1000000, 1000000, 1000000, 1000000};
+    task automatic rx_gap_monitor(int p);
+        int idle = 0; bit started = 0;
+        forever begin
+            wait_rx(p);
+            if (rx_dv[p]) begin
+                if (started && idle != 0 && idle < rx_gap_min[p]) rx_gap_min[p] = idle;
+                started = 1; idle = 0;
+            end else idle++;
+        end
     endtask
 
     // ---------------- monitors (one per egress port) ----------------
@@ -334,6 +353,7 @@ module tb_switch;
         begin byte unsigned t[$] = {8'h31,8'h32,8'h33,8'h34,8'h35,8'h36,8'h37,8'h38,8'h39};
               if (crc_bits(t) != 32'hCBF43926) begin $display("ERROR: TB CRC broken"); $finish; end end
         fork monitor(0); monitor(1); monitor(2); monitor(3); join_none   // (a fork-in-loop trips Verilator 5.020)
+        fork rx_gap_monitor(0); rx_gap_monitor(1); rx_gap_monitor(2); rx_gap_monitor(3); join_none
         repeat (10) @(posedge sys_clk); rst_n = 1; repeat (20) @(posedge sys_clk);
 
         // phase 1: learning
@@ -372,6 +392,8 @@ module tb_switch;
         while (n_received < n_expected && timeout < 200000) begin @(posedge sys_clk); timeout++; end
         repeat (2000) @(posedge sys_clk);
 
+        for (int p = 0; p < 4; p++) if (rx_gap_min[p] < 12) begin errors++; $display("ERROR: rx port %0d: generator gap %0d < 12", p, rx_gap_min[p]); end
+        $display("smallest generator gap: %0d bytes", rx_gap_min[0]);
         $display("---- functional coverage bins ----");
         begin
             string must[$] = {"broadcast", "unknown unicast (flood)", "filtered (dst on ingress port)",

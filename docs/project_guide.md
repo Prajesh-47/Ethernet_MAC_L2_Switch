@@ -379,7 +379,7 @@ MHz. So a lock-stepped flood can't starve one copy mid-frame. The cost is a smal
 
 **Head-of-line blocking.** Each input has one queue. If the front frame waits for a busy output, frames
 behind it wait too, even if their outputs are idle. It's like a car waiting to turn right holding up
-everyone behind it who's going straight. This is a large part of why 36-44% of copies are dropped at
+everyone behind it who's going straight. This is a large part of why 38-46% of copies are dropped at
 100% load. Virtual output queues would fix it, and they're on the roadmap.
 
 ### Top level (`rtl/eth_switch_4port.v`)
@@ -422,6 +422,7 @@ testbench code than design code.
 | `tb_switch_core` | Forwarding rules, AXI rules, waiting for lookups, deadlock |
 | `tb_switch_smoke` | The whole switch through 10 hand-written steps |
 | `tb_switch` | The whole switch under random traffic, 4 unrelated receive clocks, both light and full load |
+| `tb_perf` | Throughput and latency of the whole switch, with every frame still checked |
 
 **Why test at both levels?** Some bugs can't be seen from the outside. `BUG_FORK_GATED_VALID` breaks the
 AXI rules but never causes wrong data in this switch, because all outputs back-pressure at the same
@@ -433,6 +434,16 @@ design contains 8 deliberate bugs, switched on at build time with `ifdef`. `make
 and fails if its test doesn't catch it. During the MAC table work, a hand-injected bug revealed a real
 hole in the new test: a port that never refreshed its result went unnoticed, because the test never held
 an address long enough. The test was then strengthened.
+
+**Measuring speed, not just correctness.** `tb_perf` offers traffic at a chosen load and frame size, and records how much
+gets through and how long it takes. Three traffic patterns are used because they answer different questions: paired
+traffic shows the best the hardware can do, random traffic shows what head-of-line blocking costs, and three ports into
+one shows what happens when an output is simply overloaded.
+
+**Check your instruments.** The first results reported four 1,000 Mb/s ports offering 4,377 Mb/s, which is impossible. The
+traffic generator was sending illegally small gaps, and the older `tb_switch` had the same problem. No test had failed,
+because the switch handled the traffic fine. Now both testbenches measure the gaps on the wires. A believable-looking
+number can still be wrong, so check it against what's physically possible.
 
 **What simulation can't prove.** It checks the logic around the synchronizers, not metastability itself.
 It also says nothing about whether the design is fast enough for a chip, which is the next section.
@@ -502,6 +513,8 @@ Full details are in the [timing log](fpga_timing.md).
 
 **Working and tested in simulation:**
 
+- About 170 ns latency without contention, and full line rate on all ports when they don't compete (from 512 bytes up).
+  Random traffic levels off at 70-75% of line rate. See [the performance results](performance.md)
 - Complete MAC with CRC, padding and error detection
 - Safe clock crossing
 - Store-and-forward buffering, learning, flooding, filtering
@@ -519,7 +532,6 @@ Full details are in the [timing log](fpga_timing.md).
 
 **Not done yet, and planned in simulation:**
 
-- Throughput and latency have never been measured.
 - Real network traffic hasn't been passed through the simulated switch.
 - Key properties aren't formally proven yet.
 - There's no aging, VLAN support, pause frames or loop protection.
@@ -560,6 +572,7 @@ The hardest habit to unlearn is reading top to bottom like a program. Everything
 make smoke   # watch the 10 directed steps pass; the easiest one to follow
 make rx      # one unit test
 make sim     # the whole switch under random traffic
+make perf    # measure throughput and latency, about 4 minutes
 make bugs    # watch each injected bug get caught
 make test    # most of the suite
 make wave    # create build/switch.vcd

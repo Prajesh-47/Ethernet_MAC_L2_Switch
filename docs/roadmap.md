@@ -7,8 +7,8 @@ correctness, and a demonstration using real network traffic in simulation. Each 
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Bring FPGA timing as close to the target as two more fixes allow | **done**: `sys_clk` 98-102 MHz at speed grade 8, about 25% short of the 125 MHz target |
-| 2 | Measure throughput and latency | next |
-| 3 | Pass real Linux traffic through the simulated switch | not started, virtual network devices checked |
+| 2 | Measure throughput and latency | **done**: random traffic saturates at 70-75% of line rate |
+| 3 | Pass real Linux traffic through the simulated switch | next, virtual network devices checked |
 | 4 | Prove key properties with formal verification | not started |
 | 5 | Add features, tested in simulation | not started |
 
@@ -43,16 +43,11 @@ value, so no more timing fixes are planned.
 
 Details are in [fpga_timing.md](fpga_timing.md).
 
-## Phase 2: measure performance
+## Phase 2: measure performance (done)
 
-The README covers correctness and drops, but not how fast the switch is. Simulation measures this well,
-because it counts exact clock cycles.
-
-- Sweep offered load and frame size, and record throughput and latency per port.
-- Publish the curves. Expect two visible effects: head-of-line blocking and the 13-byte transmit gap.
-- Add a pass/fail threshold, so a later change cannot quietly lose throughput.
-
-Done when a `make` target produces the data and the README shows the curves.
+Results and method are in [performance.md](performance.md). The switch saturates at 70-75% under random traffic, and
+reaches full line rate without contention from 512 bytes up. `make perf` regenerates the data and charts, and
+`make perfcheck`, part of `make test`, fails if the switch gets slower.
 
 ## Phase 3: real traffic through the simulated switch
 
@@ -72,7 +67,7 @@ flood and forward it. Captures can be opened in Wireshark.
 - **Checked so far:** on this machine, creating TAP and veth devices works in a user and network
   namespace, without sudo. The harness itself isn't built.
 - **Expected limit:** simulation runs far slower than real time, and this speed hasn't been measured. It
-  will show correct behaviour, but not gigabit speed. Throughput numbers must come from phase 2.
+  will show correct behaviour, but not gigabit speed. Throughput numbers come from phase 2.
 - **Possible problem:** slow simulation could trigger TCP timeouts, so `ping` and ARP are the first goal.
 - **Tools needed:** `tcpdump` or `tshark`, and `iperf3`. All are available through `apt`.
 
@@ -97,11 +92,12 @@ Done when `make formal` proves these, the results are in CI, and the README list
 
 ## Phase 5: add features
 
-All of these can be fully tested in simulation. Start with those that show up in the phase 2 curves.
+All of these can be fully tested in simulation. Start with those that show up in the [phase 2 curves](performance.md): virtual output queues and larger
+buffers have a clear baseline to beat.
 
 | Feature | Benefit |
 | --- | --- |
-| Virtual output queues | Removes head-of-line blocking, the main cause of drops at full load |
+| Virtual output queues | Removes head-of-line blocking, which limits random traffic to 70-75% of line rate |
 | Table aging | A station that moves and stays silent is no longer unreachable |
 | Hash-based table in block RAM | Thousands of entries, not 16 (the shared lookup is already the right shape) |
 | More descriptors | Each port holds only 8 queued frames, though 4 KB fits about 60 minimum-size frames |
@@ -120,6 +116,8 @@ installed, and starts with a small trial. See the [assessment](asic_assessment.m
 
 ## Smaller follow-ups
 
+- Find why `repeat` miscounted in the testbench generators ([details](performance.md#a-bug-this-work-found-in-the-existing-test)).
+  Other testbenches use `repeat` too, but only `tb_switch` and `tb_perf` were measured on the wires.
 - Move the hand-injected bugs listed in [fpga_timing.md](fpga_timing.md#test-changes-that-came-with-this-work)
   into `make bugs` and the README table, so they keep being checked.
 - Reduce the transmit gap from 13 to 12 byte times.
