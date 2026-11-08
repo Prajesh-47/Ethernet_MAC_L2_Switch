@@ -25,9 +25,9 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | Unit tests | 8 testbenches (CRC, TX, RX, MAC loopback, ingress buffer, MAC table, switch core, 4-port smoke), all pass |
 | MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,321 / 1,321**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
-| Throughput and latency | about **170 ns** latency without contention; **full line rate** on all ports without contention from 512 bytes up (98.9% at 64); random traffic saturates at **70–75%** ([details](docs/performance.md)) |
+| Throughput and latency | about **170 ns** latency without contention; **full line rate** on all ports without contention, at every frame size; random traffic saturates at **70–75%** ([details](docs/performance.md)) |
 | Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
-| Switch, congestion mode (100% load) | 38–46% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,989 cycles (limit 20,000) |
+| Switch, congestion mode (100% load) | 35–42% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,976 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
 | Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
@@ -215,12 +215,11 @@ About 1,500 lines of RTL and 2,150 lines of testbench.
 ## Limitations
 
 - **Head-of-line blocking.** One input queue per port: a frame waiting for a busy output blocks
-  everything behind it, even frames for idle outputs. That is a large part of the 38–46% drop
+  everything behind it, even frames for idle outputs. That is a large part of the 35–42% drop
   rate at 100% load. Virtual output queues would fix it.
 - **Small, simple table.** 16 entries, no aging timer (a real switch ages entries out after ~300 s),
   oldest-first replacement.
 - **No VLANs, no pause frames, no jumbo frames.** Frames over 1518 bytes are dropped.
-- **Transmit gap is 13 byte times**, one more than the 12-byte minimum: compliant, 1 byte slower than necessary.
 - **One TX clock** for all ports, as on most boards where the MAC drives GTX_CLK.
 - **Does not meet timing yet, and has never run on hardware** (no board is planned). After place-and-route on an ECP5-45
   (speed grade 8, three seeds, I/O pins unconstrained), `sys_clk` reaches 98–102 MHz against a 125 MHz

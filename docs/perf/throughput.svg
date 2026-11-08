@@ -52,7 +52,7 @@
 <text x="366.0" y="386" text-anchor="middle">100%</text>
 <text x="215.0" y="408" text-anchor="middle">Offered load per sending port</text>
 <text transform="translate(16 229.0) rotate(-90)" text-anchor="middle">Delivered, all ports (Mb/s)</text>
-<polyline class="line l1" points="94.2,338.7 124.4,311.4 154.6,284.0 184.8,256.2 215.0,229.1 245.2,202.0 275.4,173.4 305.6,146.8 335.8,118.4 350.9,104.6 366.0,95.1"/>
+<polyline class="line l1" points="94.2,338.7 124.4,311.4 154.6,284.0 184.8,256.2 215.0,229.1 245.2,202.0 275.4,173.4 305.6,146.8 335.8,118.4 350.9,104.6 366.0,92.0"/>
 <circle class="dot d1" cx="94.2" cy="338.7" r="4.5"><title>Paired, no contention, 64 B, 10% load: 399</title></circle>
 <circle class="dot d1" cx="124.4" cy="311.4" r="4.5"><title>Paired, no contention, 64 B, 20% load: 796</title></circle>
 <circle class="dot d1" cx="154.6" cy="284.0" r="4.5"><title>Paired, no contention, 64 B, 30% load: 1,197</title></circle>
@@ -63,34 +63,34 @@
 <circle class="dot d1" cx="305.6" cy="146.8" r="4.5"><title>Paired, no contention, 64 B, 80% load: 3,200</title></circle>
 <circle class="dot d1" cx="335.8" cy="118.4" r="4.5"><title>Paired, no contention, 64 B, 90% load: 3,615</title></circle>
 <circle class="dot d1" cx="350.9" cy="104.6" r="4.5"><title>Paired, no contention, 64 B, 95% load: 3,816</title></circle>
-<circle class="dot d1" cx="366.0" cy="95.1" r="4.5"><title>Paired, no contention, 64 B, 100% load: 3,955</title></circle>
-<polyline class="line l2" points="94.2,338.6 124.4,311.2 154.6,284.0 184.8,256.3 215.0,229.0 245.2,201.7 275.4,174.6 305.6,161.7 335.8,161.6 350.9,161.7 366.0,159.8"/>
+<circle class="dot d1" cx="366.0" cy="92.0" r="4.5"><title>Paired, no contention, 64 B, 100% load: 3,999</title></circle>
+<polyline class="line l2" points="94.2,338.6 124.4,311.2 154.6,284.0 184.8,256.3 215.0,229.0 245.2,201.8 275.4,174.1 305.6,160.7 335.8,158.7 350.9,159.9 366.0,159.6"/>
 <circle class="dot d2" cx="94.2" cy="338.6" r="4.5"><title>Uniform random, 64 B, 10% load: 399</title></circle>
 <circle class="dot d2" cx="124.4" cy="311.2" r="4.5"><title>Uniform random, 64 B, 20% load: 800</title></circle>
-<circle class="dot d2" cx="154.6" cy="284.0" r="4.5"><title>Uniform random, 64 B, 30% load: 1,197</title></circle>
+<circle class="dot d2" cx="154.6" cy="284.0" r="4.5"><title>Uniform random, 64 B, 30% load: 1,198</title></circle>
 <circle class="dot d2" cx="184.8" cy="256.3" r="4.5"><title>Uniform random, 64 B, 40% load: 1,601</title></circle>
 <circle class="dot d2" cx="215.0" cy="229.0" r="4.5"><title>Uniform random, 64 B, 50% load: 2,000</title></circle>
-<circle class="dot d2" cx="245.2" cy="201.7" r="4.5"><title>Uniform random, 64 B, 60% load: 2,398</title></circle>
-<circle class="dot d2" cx="275.4" cy="174.6" r="4.5"><title>Uniform random, 64 B, 70% load: 2,794</title></circle>
-<circle class="dot d2" cx="305.6" cy="161.7" r="4.5"><title>Uniform random, 64 B, 80% load: 2,982</title></circle>
-<circle class="dot d2" cx="335.8" cy="161.6" r="4.5"><title>Uniform random, 64 B, 90% load: 2,985</title></circle>
-<circle class="dot d2" cx="350.9" cy="161.7" r="4.5"><title>Uniform random, 64 B, 95% load: 2,982</title></circle>
-<circle class="dot d2" cx="366.0" cy="159.8" r="4.5"><title>Uniform random, 64 B, 100% load: 3,010</title></circle>
-<polyline class="line l3" points="94.2,345.4 124.4,325.0 154.6,304.0 184.8,298.3 215.0,298.3 245.2,298.3 275.4,298.3 305.6,298.3 335.8,298.3 350.9,298.3 366.0,298.3"/>
+<circle class="dot d2" cx="245.2" cy="201.8" r="4.5"><title>Uniform random, 64 B, 60% load: 2,397</title></circle>
+<circle class="dot d2" cx="275.4" cy="174.1" r="4.5"><title>Uniform random, 64 B, 70% load: 2,802</title></circle>
+<circle class="dot d2" cx="305.6" cy="160.7" r="4.5"><title>Uniform random, 64 B, 80% load: 2,997</title></circle>
+<circle class="dot d2" cx="335.8" cy="158.7" r="4.5"><title>Uniform random, 64 B, 90% load: 3,026</title></circle>
+<circle class="dot d2" cx="350.9" cy="159.9" r="4.5"><title>Uniform random, 64 B, 95% load: 3,009</title></circle>
+<circle class="dot d2" cx="366.0" cy="159.6" r="4.5"><title>Uniform random, 64 B, 100% load: 3,014</title></circle>
+<polyline class="line l3" points="94.2,345.4 124.4,325.0 154.6,304.0 184.8,297.5 215.0,297.5 245.2,297.5 275.4,297.5 305.6,297.5 335.8,297.5 350.9,297.5 366.0,297.5"/>
 <circle class="dot d3" cx="94.2" cy="345.4" r="4.5"><title>Three ports into one, 64 B, 10% load: 300</title></circle>
 <circle class="dot d3" cx="124.4" cy="325.0" r="4.5"><title>Three ports into one, 64 B, 20% load: 599</title></circle>
 <circle class="dot d3" cx="154.6" cy="304.0" r="4.5"><title>Three ports into one, 64 B, 30% load: 904</title></circle>
-<circle class="dot d3" cx="184.8" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 40% load: 988</title></circle>
-<circle class="dot d3" cx="215.0" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 50% load: 988</title></circle>
-<circle class="dot d3" cx="245.2" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 60% load: 989</title></circle>
-<circle class="dot d3" cx="275.4" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 70% load: 989</title></circle>
-<circle class="dot d3" cx="305.6" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 80% load: 988</title></circle>
-<circle class="dot d3" cx="335.8" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 90% load: 988</title></circle>
-<circle class="dot d3" cx="350.9" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 95% load: 988</title></circle>
-<circle class="dot d3" cx="366.0" cy="298.3" r="4.5"><title>Three ports into one, 64 B, 100% load: 989</title></circle>
-<text class="label" x="375.0" y="99.1">3,955</text>
-<text class="label" x="375.0" y="163.8">3,010</text>
-<text class="label" x="375.0" y="302.3">989</text>
+<circle class="dot d3" cx="184.8" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 40% load: 1,000</title></circle>
+<circle class="dot d3" cx="215.0" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 50% load: 1,000</title></circle>
+<circle class="dot d3" cx="245.2" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 60% load: 1,000</title></circle>
+<circle class="dot d3" cx="275.4" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 70% load: 1,000</title></circle>
+<circle class="dot d3" cx="305.6" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 80% load: 1,000</title></circle>
+<circle class="dot d3" cx="335.8" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 90% load: 1,000</title></circle>
+<circle class="dot d3" cx="350.9" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 95% load: 1,000</title></circle>
+<circle class="dot d3" cx="366.0" cy="297.5" r="4.5"><title>Three ports into one, 64 B, 100% load: 1,000</title></circle>
+<text class="label" x="375.0" y="96.0">3,999</text>
+<text class="label" x="375.0" y="163.6">3,014</text>
+<text class="label" x="375.0" y="301.5">1,000</text>
 <text class="panel" x="502.0" y="84">1518-byte frames</text>
 <line class="grid" x1="502.0" x2="804.0" y1="366.0" y2="366.0"/>
 <line class="grid" x1="502.0" x2="804.0" y1="297.5" y2="297.5"/>
@@ -115,31 +115,31 @@
 <circle class="dot d1" cx="773.8" cy="118.4" r="4.5"><title>Paired, no contention, 1518 B, 90% load: 3,615</title></circle>
 <circle class="dot d1" cx="788.9" cy="105.7" r="4.5"><title>Paired, no contention, 1518 B, 95% load: 3,800</title></circle>
 <circle class="dot d1" cx="804.0" cy="92.0" r="4.5"><title>Paired, no contention, 1518 B, 100% load: 4,000</title></circle>
-<polyline class="line l2" points="532.2,338.6 562.4,311.2 592.6,284.1 622.8,257.8 653.0,229.3 683.2,205.2 713.4,187.4 743.6,175.6 773.8,178.3 788.9,180.2 804.0,171.6"/>
+<polyline class="line l2" points="532.2,338.6 562.4,311.2 592.6,284.1 622.8,257.8 653.0,229.4 683.2,205.2 713.4,187.9 743.6,174.6 773.8,175.5 788.9,179.3 804.0,177.2"/>
 <circle class="dot d2" cx="532.2" cy="338.6" r="4.5"><title>Uniform random, 1518 B, 10% load: 401</title></circle>
 <circle class="dot d2" cx="562.4" cy="311.2" r="4.5"><title>Uniform random, 1518 B, 20% load: 800</title></circle>
 <circle class="dot d2" cx="592.6" cy="284.1" r="4.5"><title>Uniform random, 1518 B, 30% load: 1,196</title></circle>
 <circle class="dot d2" cx="622.8" cy="257.8" r="4.5"><title>Uniform random, 1518 B, 40% load: 1,580</title></circle>
-<circle class="dot d2" cx="653.0" cy="229.3" r="4.5"><title>Uniform random, 1518 B, 50% load: 1,995</title></circle>
+<circle class="dot d2" cx="653.0" cy="229.4" r="4.5"><title>Uniform random, 1518 B, 50% load: 1,994</title></circle>
 <circle class="dot d2" cx="683.2" cy="205.2" r="4.5"><title>Uniform random, 1518 B, 60% load: 2,347</title></circle>
-<circle class="dot d2" cx="713.4" cy="187.4" r="4.5"><title>Uniform random, 1518 B, 70% load: 2,607</title></circle>
-<circle class="dot d2" cx="743.6" cy="175.6" r="4.5"><title>Uniform random, 1518 B, 80% load: 2,780</title></circle>
-<circle class="dot d2" cx="773.8" cy="178.3" r="4.5"><title>Uniform random, 1518 B, 90% load: 2,740</title></circle>
-<circle class="dot d2" cx="788.9" cy="180.2" r="4.5"><title>Uniform random, 1518 B, 95% load: 2,713</title></circle>
-<circle class="dot d2" cx="804.0" cy="171.6" r="4.5"><title>Uniform random, 1518 B, 100% load: 2,838</title></circle>
-<polyline class="line l3" points="532.2,345.7 562.4,325.8 592.6,305.7 622.8,297.5 653.0,297.6 683.2,297.5 713.4,297.7 743.6,297.7 773.8,297.5 788.9,297.2 804.0,297.5"/>
+<circle class="dot d2" cx="713.4" cy="187.9" r="4.5"><title>Uniform random, 1518 B, 70% load: 2,600</title></circle>
+<circle class="dot d2" cx="743.6" cy="174.6" r="4.5"><title>Uniform random, 1518 B, 80% load: 2,794</title></circle>
+<circle class="dot d2" cx="773.8" cy="175.5" r="4.5"><title>Uniform random, 1518 B, 90% load: 2,780</title></circle>
+<circle class="dot d2" cx="788.9" cy="179.3" r="4.5"><title>Uniform random, 1518 B, 95% load: 2,725</title></circle>
+<circle class="dot d2" cx="804.0" cy="177.2" r="4.5"><title>Uniform random, 1518 B, 100% load: 2,756</title></circle>
+<polyline class="line l3" points="532.2,345.7 562.4,325.8 592.6,305.7 622.8,297.5 653.0,297.6 683.2,297.6 713.4,297.6 743.6,297.5 773.8,297.4 788.9,297.2 804.0,297.5"/>
 <circle class="dot d3" cx="532.2" cy="345.7" r="4.5"><title>Three ports into one, 1518 B, 10% load: 296</title></circle>
 <circle class="dot d3" cx="562.4" cy="325.8" r="4.5"><title>Three ports into one, 1518 B, 20% load: 587</title></circle>
 <circle class="dot d3" cx="592.6" cy="305.7" r="4.5"><title>Three ports into one, 1518 B, 30% load: 880</title></circle>
-<circle class="dot d3" cx="622.8" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 40% load: 1,001</title></circle>
+<circle class="dot d3" cx="622.8" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 40% load: 1,000</title></circle>
 <circle class="dot d3" cx="653.0" cy="297.6" r="4.5"><title>Three ports into one, 1518 B, 50% load: 999</title></circle>
-<circle class="dot d3" cx="683.2" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 60% load: 1,000</title></circle>
-<circle class="dot d3" cx="713.4" cy="297.7" r="4.5"><title>Three ports into one, 1518 B, 70% load: 997</title></circle>
-<circle class="dot d3" cx="743.6" cy="297.7" r="4.5"><title>Three ports into one, 1518 B, 80% load: 998</title></circle>
-<circle class="dot d3" cx="773.8" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 90% load: 1,000</title></circle>
+<circle class="dot d3" cx="683.2" cy="297.6" r="4.5"><title>Three ports into one, 1518 B, 60% load: 999</title></circle>
+<circle class="dot d3" cx="713.4" cy="297.6" r="4.5"><title>Three ports into one, 1518 B, 70% load: 999</title></circle>
+<circle class="dot d3" cx="743.6" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 80% load: 1,000</title></circle>
+<circle class="dot d3" cx="773.8" cy="297.4" r="4.5"><title>Three ports into one, 1518 B, 90% load: 1,002</title></circle>
 <circle class="dot d3" cx="788.9" cy="297.2" r="4.5"><title>Three ports into one, 1518 B, 95% load: 1,004</title></circle>
 <circle class="dot d3" cx="804.0" cy="297.5" r="4.5"><title>Three ports into one, 1518 B, 100% load: 1,000</title></circle>
 <text class="label" x="813.0" y="96.0">4,000</text>
-<text class="label" x="813.0" y="175.6">2,838</text>
+<text class="label" x="813.0" y="181.2">2,756</text>
 <text class="label" x="813.0" y="301.5">1,000</text>
 </svg>

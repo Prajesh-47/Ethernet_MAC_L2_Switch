@@ -46,7 +46,7 @@ Details are in [fpga_timing.md](fpga_timing.md).
 ## Phase 2: measure performance (done)
 
 Results and method are in [performance.md](performance.md). The switch saturates at 70-75% under random traffic, and
-reaches full line rate without contention from 512 bytes up. `make perf` regenerates the data and charts, and
+reaches full line rate without contention at every frame size. `make perf` regenerates the data and charts, and
 `make perfcheck`, part of `make test`, fails if the switch gets slower.
 
 ## Phase 3: real traffic through the simulated switch
@@ -117,8 +117,9 @@ installed, and starts with a small trial. See the [assessment](asic_assessment.m
 ## Smaller follow-ups
 
 - Find why `repeat` miscounted in the testbench generators ([details](performance.md#a-bug-this-work-found-in-the-existing-test)).
-  Other testbenches use `repeat` too, but only `tb_switch` and `tb_perf` were measured on the wires.
+  The other generators that wait a random count with `repeat` were measured on the wires and count correctly:
+  `tb_mac_rx` (gaps 13-33, mean 23.3, as intended) and `tb_ingress_buf` (mean 10.9 against an expected 11).
+  The root cause is still unknown.
 - Move the hand-injected bugs listed in [fpga_timing.md](fpga_timing.md#test-changes-that-came-with-this-work)
   into `make bugs` and the README table, so they keep being checked.
-- Reduce the transmit gap from 13 to 12 byte times.
 - Add a station-move scenario to `tb_switch`, which cannot currently catch `BUG_NO_MOVE`.

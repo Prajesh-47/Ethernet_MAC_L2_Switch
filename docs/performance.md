@@ -8,10 +8,10 @@ describe the RTL's behaviour. They assume that clock is reached, and the
 
 | Question | Answer |
 | --- | --- |
-| Latency with no contention | **About 170 ns** (median), last bit in to first bit out, at any frame size up to 95% load |
-| Ports not competing for an output | **Full line rate** on all 4 ports from 512-byte frames up; 98.9% at 64 bytes |
-| Random traffic, all ports | **Saturates at 70-75%** of line rate (2,816-3,010 of 4,000 Mb/s) |
-| Three ports into one | The output runs at full rate (989-1,000 Mb/s), and the rest is dropped |
+| Latency with no contention | **About 170 ns** (median), last bit in to first bit out, at any frame size and load |
+| Ports not competing for an output | **Full line rate** on all 4 ports at every frame size, with no drops |
+| Random traffic, all ports | **Saturates at about 70-75%** of line rate (2,756-3,014 of 4,000 Mb/s) |
+| Three ports into one | The output runs at full rate (1,000 Mb/s), and the rest is dropped |
 | Frame integrity | Every delivered frame correct, in all 594 runs, including overload |
 
 <p align="center"><img src="perf/throughput.svg" alt="Delivered throughput against offered load, for 64-byte and 1518-byte frames" width="900"></p>
@@ -27,10 +27,12 @@ classic result for a 4-port input-queued switch at saturation is about 65.5% (Ka
 model uses fixed-size cells and synchronized slots, so it's a reference point, not a direct comparison. Virtual
 output queues should remove this limit, and these curves are the baseline to test that against.
 
-**The 13-byte transmit gap costs a little at small frames.** The transmitter leaves one byte more than the
-minimum gap, so it takes 85 byte times to send what arrives in 84. At 64 bytes and 100% load, that's 3,955 Mb/s
-rather than 4,000 (84/85 is 98.8%), and queues slowly fill: median latency rises from 170 ns to 3.7 µs, and 0.4% of
-frames are dropped. The effect shrinks as frames grow, and disappears at 512 bytes in these runs.
+**A one-byte transmit gap fix gave full rate at 100% load.** The transmitter used to leave 13 idle bytes between
+frames, one more than the minimum, so it sent each frame slightly slower than it arrived. With paired traffic at 100%
+load, queues slowly filled at every frame size. At 64 bytes, 3,955 Mb/s got through, with 0.4% dropped and a 3.7 µs
+median latency. At 1518 bytes, the median latency was 835 ns. With the gap at exactly 12, paired traffic at 100% load
+delivers 3,999-4,000 Mb/s with no drops, and the median latency stays at 180-187 ns. Random traffic didn't change
+beyond seed variation, because head-of-line blocking limits it first.
 
 **Latency stops rising when buffers are full.** Under overload, latency levels off because the queue can't get any
 longer. Beyond that point frames are dropped instead. At 64 bytes the 8-entry descriptor queue is the limit. At larger
@@ -40,7 +42,7 @@ sizes the 4 KB buffer is. Latency only describes frames that were delivered.
 
 | Frame size | Paired | Uniform random | Three into one |
 | --- | --- | --- | --- |
-| 64 | 95% | 60% | 30% |
+| 64 | 100% | 60% | 30% |
 | 128 | 100% | 60% | 30% |
 | 256 | 100% | 60% | 30% |
 | 512 | 100% | 60% | 30% |
@@ -54,15 +56,15 @@ holds fewer than 3 full-size frames, so large frames have less room for bursts.
 
 | Pattern | Frame size | Delivered (Mb/s) | Dropped | Median latency | 99th percentile |
 | --- | --- | --- | --- | --- | --- |
-| Paired | 64 | 3,955 | 0.4% | 3.7 µs | 5.2 µs |
-| Paired | 256 | 3,991 | 0% | 2.4 µs | 4.1 µs |
-| Paired | 1518 | 4,000 | 0% | 835 ns | 1.4 µs |
-| Uniform | 64 | 3,010 | 24.1% | 6.1 µs | 11.5 µs |
-| Uniform | 256 | 2,848 | 27.4% | 21.0 µs | 37.4 µs |
-| Uniform | 1518 | 2,838 | 28.1% | 20.5 µs | 78.3 µs |
-| Three into one | 64 | 989 | 66.1% | 15.4 µs | 21.5 µs |
-| Three into one | 256 | 998 | 65.3% | 48.5 µs | 69.0 µs |
-| Three into one | 1518 | 1,000 | 65.6% | 75.2 µs | 87.5 µs |
+| Paired | 64 | 3,999 | 0% | 180 ns | 185 ns |
+| Paired | 256 | 4,000 | 0% | 180 ns | 185 ns |
+| Paired | 1518 | 4,000 | 0% | 187 ns | 188 ns |
+| Uniform | 64 | 3,014 | 24.0% | 6.1 µs | 10.9 µs |
+| Uniform | 256 | 2,875 | 26.9% | 20.8 µs | 35.9 µs |
+| Uniform | 1518 | 2,756 | 29.9% | 21.7 µs | 80.3 µs |
+| Three into one | 64 | 1,000 | 65.7% | 10.2 µs | 21.0 µs |
+| Three into one | 256 | 1,000 | 65.1% | 46.5 µs | 68.6 µs |
+| Three into one | 1518 | 1,000 | 65.6% | 74.0 µs | 86.3 µs |
 
 Every point, for all sizes and loads, is in [perf/results.csv](perf/results.csv).
 
@@ -103,7 +105,7 @@ can leave, so add its time on the wire for a first-bit-to-first-bit figure: 512 
 
 ```bash
 make perf        # the full sweep, about 4 minutes on 16 cores: docs/perf/results.csv and the charts
-make perfcheck   # 7 fixed points against limits, part of make test and CI
+make perfcheck   # 8 fixed points against limits, part of make test and CI
 ```
 
 `make perfcheck` fails if the switch gets slower. Its limits are set below the measurements in
@@ -121,5 +123,5 @@ Replacing `repeat` with `for` loops fixed it. Both tests now also measure the ga
 any is under 12 bytes.
 
 Congestion-mode figures published before this fix came from illegally overdriven traffic. The switch's behaviour was not at
-fault: frames were never corrupted. With correct traffic, `make congest` drops 38-46% of copies, against the 36-44% measured
-just before the fix.
+fault: frames were never corrupted. With correct traffic, `make congest` dropped 38-46% of copies, against the 36-44% measured
+just before the fix. Since the transmit gap was cut to 12 bytes, it drops 35-42%.
