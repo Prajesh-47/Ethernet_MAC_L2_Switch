@@ -32,7 +32,7 @@ module eth_mac (
     input  wire       tx_tvalid,
     input  wire       tx_tlast,
     output wire       tx_tready,
-    output wire       tx_fifo_empty,   // sys-side view: egress FIFO holds nothing
+    output reg        tx_fifo_empty,   // sys-side view: egress FIFO holds nothing (see below)
     // status (in their own clock domains)
     output wire       stat_rx_good,
     output wire       stat_rx_bad,
@@ -62,14 +62,34 @@ module eth_mac (
     // ---------------- transmit ----------------
     wire [7:0] t_data; wire t_valid, t_last, t_ready;
     wire [5:0] tx_fill;
+
+    // Register slice before the FIFO, so the switch's crossbar does not run into
+    // the FIFO's write pointer logic in one cycle.
+    wire sys_rst_sync_n;
+    reset_sync u_sysr (.clk(sys_clk), .rst_n_in(sys_rst_n), .rst_n_out(sys_rst_sync_n));
+    wire [8:0] f_data; wire f_valid, f_ready, skid_empty;
+    axis_skid #(.DW(9)) u_tx_skid (
+        .clk(sys_clk), .rst_n(sys_rst_sync_n),
+        .s_tdata({tx_tlast, tx_tdata}), .s_tvalid(tx_tvalid), .s_tready(tx_tready),
+        .m_tdata(f_data), .m_tvalid(f_valid), .m_tready(f_ready), .empty(skid_empty));
+
     async_fifo #(.DW(9), .AW(5)) u_tx_fifo (
         .s_aclk(sys_clk), .s_aresetn(sys_rst_n),
-        .s_axis_tdata({tx_tlast, tx_tdata}), .s_axis_tvalid(tx_tvalid), .s_axis_tready(tx_tready),
+        .s_axis_tdata(f_data), .s_axis_tvalid(f_valid), .s_axis_tready(f_ready),
         .s_almost_full(), .s_fill(tx_fill),
         .m_aclk(gmii_tx_clk), .m_aresetn(sys_rst_n),
         .m_axis_tdata({t_last, t_data}), .m_axis_tvalid(t_valid),
         .m_axis_tready(t_ready), .m_almost_empty());
-    assign tx_fifo_empty = (tx_fill == 6'd0);
+
+    // Registered, because tx_fill is a Gray decode plus a subtraction and this
+    // flag feeds the switch's arbiter. A word entering the slice clears it straight
+    // away: it may say "not empty" a cycle too long, which is safe, but it never
+    // says "empty" while the slice or the FIFO holds data (the switch relies on
+    // that to grant a port).
+    always @(posedge sys_clk or negedge sys_rst_sync_n) begin
+        if (!sys_rst_sync_n) tx_fifo_empty <= 1'b0;
+        else                 tx_fifo_empty <= (tx_fill == 6'd0) && skid_empty && !(tx_tvalid && tx_tready);
+    end
 
     eth_mac_tx u_tx (
         .clk(gmii_tx_clk), .rst_n(tx_rst_n),
