@@ -243,7 +243,8 @@ It's a state machine with six steps: idle, preamble, data, pad, FCS, gap.
 - **Underrun:** if bytes stop arriving mid-frame, the wire can't wait, so it raises `tx_er`. The
   receiver then discards the frame rather than accept a damaged one. The switch is designed so this
   doesn't happen, and the tests treat it as an error.
-- **The gap** is 13 byte times, one more than the minimum. This is allowed, but slightly wasteful.
+- **The gap** is exactly 12 byte times, the minimum. It used to be 13, which slowly filled the queues at full load
+  (see [the performance results](performance.md)).
 
 ### Clock crossing (`rtl/cdc/`)
 
@@ -379,7 +380,7 @@ MHz. So a lock-stepped flood can't starve one copy mid-frame. The cost is a smal
 
 **Head-of-line blocking.** Each input has one queue. If the front frame waits for a busy output, frames
 behind it wait too, even if their outputs are idle. It's like a car waiting to turn right holding up
-everyone behind it who's going straight. This is a large part of why 38-46% of copies are dropped at
+everyone behind it who's going straight. This is a large part of why 35-42% of copies are dropped at
 100% load. Virtual output queues would fix it, and they're on the roadmap.
 
 ### Top level (`rtl/eth_switch_4port.v`)
@@ -513,7 +514,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **Working and tested in simulation:**
 
-- About 170 ns latency without contention, and full line rate on all ports when they don't compete (from 512 bytes up).
+- About 170 ns latency without contention, and full line rate on all ports when they don't compete, at every frame size.
   Random traffic levels off at 70-75% of line rate. See [the performance results](performance.md)
 - Complete MAC with CRC, padding and error detection
 - Safe clock crossing

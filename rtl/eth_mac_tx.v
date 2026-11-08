@@ -9,7 +9,8 @@
 //   DATA : frame bytes from the stream (tready = 1 only here)
 //   PAD  : 0x00 until 60 bytes have been sent (64 with FCS = minimum frame)
 //   FCS  : ~CRC, least significant byte first
-//   IFG  : 12 idle byte times before the next preamble
+//   IFG  : 12 idle byte times before the next preamble (11 in S_IFG, then at
+//          least 1 in S_IDLE, which starts the next frame)
 // CRC covers DATA + PAD (not preamble/SFD).
 //
 // Underrun: if the stream runs dry in the middle of a frame (tvalid = 0 before
@@ -97,7 +98,7 @@ module eth_mac_tx (
                 end
                 S_IFG: begin
                     gmii_tx_en <= 1'b0; gmii_txd <= 8'h00;
-                    if (cnt == 11) st <= S_IDLE; else cnt <= cnt + 1'b1;
+                    if (cnt == 10) st <= S_IDLE; else cnt <= cnt + 1'b1;   // + 1 in S_IDLE = 12
                 end
                 default: st <= S_IDLE;
             endcase

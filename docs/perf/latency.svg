@@ -50,45 +50,45 @@
 <text x="366.0" y="386" text-anchor="middle">100%</text>
 <text x="215.0" y="408" text-anchor="middle">Offered load per sending port</text>
 <text transform="translate(16 229.0) rotate(-90)" text-anchor="middle">Latency, delivered frames</text>
-<polyline class="line l1" points="94.2,344.8 124.4,344.8 154.6,344.8 184.8,344.1 215.0,344.8 245.2,343.8 275.4,343.8 305.6,343.6 335.8,343.4 350.9,343.2 366.0,223.8"/>
+<polyline class="line l1" points="94.2,344.8 124.4,344.8 154.6,344.8 184.8,344.8 215.0,344.8 245.2,343.8 275.4,343.8 305.6,343.8 335.8,343.7 350.9,343.8 366.0,343.8"/>
 <circle class="dot d1" cx="94.2" cy="344.8" r="4.5"><title>Paired, no contention, 64 B, 10% load: 180 ns</title></circle>
 <circle class="dot d1" cx="124.4" cy="344.8" r="4.5"><title>Paired, no contention, 64 B, 20% load: 180 ns</title></circle>
 <circle class="dot d1" cx="154.6" cy="344.8" r="4.5"><title>Paired, no contention, 64 B, 30% load: 180 ns</title></circle>
-<circle class="dot d1" cx="184.8" cy="344.1" r="4.5"><title>Paired, no contention, 64 B, 40% load: 183 ns</title></circle>
+<circle class="dot d1" cx="184.8" cy="344.8" r="4.5"><title>Paired, no contention, 64 B, 40% load: 180 ns</title></circle>
 <circle class="dot d1" cx="215.0" cy="344.8" r="4.5"><title>Paired, no contention, 64 B, 50% load: 180 ns</title></circle>
 <circle class="dot d1" cx="245.2" cy="343.8" r="4.5"><title>Paired, no contention, 64 B, 60% load: 185 ns</title></circle>
 <circle class="dot d1" cx="275.4" cy="343.8" r="4.5"><title>Paired, no contention, 64 B, 70% load: 185 ns</title></circle>
-<circle class="dot d1" cx="305.6" cy="343.6" r="4.5"><title>Paired, no contention, 64 B, 80% load: 186 ns</title></circle>
-<circle class="dot d1" cx="335.8" cy="343.4" r="4.5"><title>Paired, no contention, 64 B, 90% load: 187 ns</title></circle>
-<circle class="dot d1" cx="350.9" cy="343.2" r="4.5"><title>Paired, no contention, 64 B, 95% load: 188 ns</title></circle>
-<circle class="dot d1" cx="366.0" cy="223.8" r="4.5"><title>Paired, no contention, 64 B, 100% load: 5.17 &#181;s</title></circle>
-<polyline class="line l2" points="94.2,292.9 124.4,290.0 154.6,282.5 184.8,271.1 215.0,257.6 245.2,245.5 275.4,211.8 305.6,199.0 335.8,197.0 350.9,194.8 366.0,195.1"/>
-<circle class="dot d2" cx="94.2" cy="292.9" r="4.5"><title>Uniform random, 64 B, 10% load: 760 ns</title></circle>
-<circle class="dot d2" cx="124.4" cy="290.0" r="4.5"><title>Uniform random, 64 B, 20% load: 823 ns</title></circle>
-<circle class="dot d2" cx="154.6" cy="282.5" r="4.5"><title>Uniform random, 64 B, 30% load: 1.01 &#181;s</title></circle>
-<circle class="dot d2" cx="184.8" cy="271.1" r="4.5"><title>Uniform random, 64 B, 40% load: 1.39 &#181;s</title></circle>
-<circle class="dot d2" cx="215.0" cy="257.6" r="4.5"><title>Uniform random, 64 B, 50% load: 2.02 &#181;s</title></circle>
-<circle class="dot d2" cx="245.2" cy="245.5" r="4.5"><title>Uniform random, 64 B, 60% load: 2.83 &#181;s</title></circle>
-<circle class="dot d2" cx="275.4" cy="211.8" r="4.5"><title>Uniform random, 64 B, 70% load: 7.2 &#181;s</title></circle>
-<circle class="dot d2" cx="305.6" cy="199.0" r="4.5"><title>Uniform random, 64 B, 80% load: 10.3 &#181;s</title></circle>
-<circle class="dot d2" cx="335.8" cy="197.0" r="4.5"><title>Uniform random, 64 B, 90% load: 10.9 &#181;s</title></circle>
-<circle class="dot d2" cx="350.9" cy="194.8" r="4.5"><title>Uniform random, 64 B, 95% load: 11.6 &#181;s</title></circle>
-<circle class="dot d2" cx="366.0" cy="195.1" r="4.5"><title>Uniform random, 64 B, 100% load: 11.5 &#181;s</title></circle>
-<polyline class="line l3" points="94.2,285.1 124.4,267.0 154.6,220.3 184.8,172.5 215.0,172.4 245.2,172.4 275.4,172.4 305.6,172.4 335.8,172.4 350.9,172.4 366.0,172.4"/>
-<circle class="dot d3" cx="94.2" cy="285.1" r="4.5"><title>Three ports into one, 64 B, 10% load: 943 ns</title></circle>
-<circle class="dot d3" cx="124.4" cy="267.0" r="4.5"><title>Three ports into one, 64 B, 20% load: 1.56 &#181;s</title></circle>
-<circle class="dot d3" cx="154.6" cy="220.3" r="4.5"><title>Three ports into one, 64 B, 30% load: 5.69 &#181;s</title></circle>
-<circle class="dot d3" cx="184.8" cy="172.5" r="4.5"><title>Three ports into one, 64 B, 40% load: 21.4 &#181;s</title></circle>
-<circle class="dot d3" cx="215.0" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 50% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="245.2" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 60% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="275.4" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 70% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="305.6" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 80% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="335.8" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 90% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="350.9" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 95% load: 21.5 &#181;s</title></circle>
-<circle class="dot d3" cx="366.0" cy="172.4" r="4.5"><title>Three ports into one, 64 B, 100% load: 21.5 &#181;s</title></circle>
-<text class="label" x="375.0" y="176.4">21.5 &#181;s</text>
-<text class="label" x="375.0" y="199.1">11.5 &#181;s</text>
-<text class="label" x="375.0" y="227.8">5.17 &#181;s</text>
+<circle class="dot d1" cx="305.6" cy="343.8" r="4.5"><title>Paired, no contention, 64 B, 80% load: 185 ns</title></circle>
+<circle class="dot d1" cx="335.8" cy="343.7" r="4.5"><title>Paired, no contention, 64 B, 90% load: 186 ns</title></circle>
+<circle class="dot d1" cx="350.9" cy="343.8" r="4.5"><title>Paired, no contention, 64 B, 95% load: 185 ns</title></circle>
+<circle class="dot d1" cx="366.0" cy="343.8" r="4.5"><title>Paired, no contention, 64 B, 100% load: 185 ns</title></circle>
+<polyline class="line l2" points="94.2,293.3 124.4,290.4 154.6,284.0 184.8,272.6 215.0,259.5 245.2,248.7 275.4,217.5 305.6,199.4 335.8,197.5 350.9,194.7 366.0,196.8"/>
+<circle class="dot d2" cx="94.2" cy="293.3" r="4.5"><title>Uniform random, 64 B, 10% load: 752 ns</title></circle>
+<circle class="dot d2" cx="124.4" cy="290.4" r="4.5"><title>Uniform random, 64 B, 20% load: 813 ns</title></circle>
+<circle class="dot d2" cx="154.6" cy="284.0" r="4.5"><title>Uniform random, 64 B, 30% load: 973 ns</title></circle>
+<circle class="dot d2" cx="184.8" cy="272.6" r="4.5"><title>Uniform random, 64 B, 40% load: 1.33 &#181;s</title></circle>
+<circle class="dot d2" cx="215.0" cy="259.5" r="4.5"><title>Uniform random, 64 B, 50% load: 1.92 &#181;s</title></circle>
+<circle class="dot d2" cx="245.2" cy="248.7" r="4.5"><title>Uniform random, 64 B, 60% load: 2.59 &#181;s</title></circle>
+<circle class="dot d2" cx="275.4" cy="217.5" r="4.5"><title>Uniform random, 64 B, 70% load: 6.16 &#181;s</title></circle>
+<circle class="dot d2" cx="305.6" cy="199.4" r="4.5"><title>Uniform random, 64 B, 80% load: 10.2 &#181;s</title></circle>
+<circle class="dot d2" cx="335.8" cy="197.5" r="4.5"><title>Uniform random, 64 B, 90% load: 10.7 &#181;s</title></circle>
+<circle class="dot d2" cx="350.9" cy="194.7" r="4.5"><title>Uniform random, 64 B, 95% load: 11.6 &#181;s</title></circle>
+<circle class="dot d2" cx="366.0" cy="196.8" r="4.5"><title>Uniform random, 64 B, 100% load: 10.9 &#181;s</title></circle>
+<polyline class="line l3" points="94.2,285.7 124.4,267.7 154.6,226.7 184.8,172.9 215.0,172.9 245.2,172.9 275.4,172.9 305.6,172.8 335.8,172.8 350.9,172.8 366.0,173.3"/>
+<circle class="dot d3" cx="94.2" cy="285.7" r="4.5"><title>Three ports into one, 64 B, 10% load: 927 ns</title></circle>
+<circle class="dot d3" cx="124.4" cy="267.7" r="4.5"><title>Three ports into one, 64 B, 20% load: 1.53 &#181;s</title></circle>
+<circle class="dot d3" cx="154.6" cy="226.7" r="4.5"><title>Three ports into one, 64 B, 30% load: 4.77 &#181;s</title></circle>
+<circle class="dot d3" cx="184.8" cy="172.9" r="4.5"><title>Three ports into one, 64 B, 40% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="215.0" cy="172.9" r="4.5"><title>Three ports into one, 64 B, 50% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="245.2" cy="172.9" r="4.5"><title>Three ports into one, 64 B, 60% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="275.4" cy="172.9" r="4.5"><title>Three ports into one, 64 B, 70% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="305.6" cy="172.8" r="4.5"><title>Three ports into one, 64 B, 80% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="335.8" cy="172.8" r="4.5"><title>Three ports into one, 64 B, 90% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="350.9" cy="172.8" r="4.5"><title>Three ports into one, 64 B, 95% load: 21.2 &#181;s</title></circle>
+<circle class="dot d3" cx="366.0" cy="173.3" r="4.5"><title>Three ports into one, 64 B, 100% load: 21 &#181;s</title></circle>
+<text class="label" x="375.0" y="177.3">21 &#181;s</text>
+<text class="label" x="375.0" y="200.8">10.9 &#181;s</text>
+<text class="label" x="375.0" y="347.8">185 ns</text>
 <text class="panel" x="502.0" y="84">1518-byte frames</text>
 <line class="grid" x1="502.0" x2="804.0" y1="366.0" y2="366.0"/>
 <line class="grid" x1="502.0" x2="804.0" y1="283.0" y2="283.0"/>
@@ -100,7 +100,7 @@
 <text x="728.5" y="386" text-anchor="middle">75%</text>
 <text x="804.0" y="386" text-anchor="middle">100%</text>
 <text x="653.0" y="408" text-anchor="middle">Offered load per sending port</text>
-<polyline class="line l1" points="532.2,344.8 562.4,344.8 592.6,344.8 622.8,344.8 653.0,344.8 683.2,344.8 713.4,344.8 743.6,344.8 773.8,344.8 788.9,344.8 804.0,271.9"/>
+<polyline class="line l1" points="532.2,344.8 562.4,344.8 592.6,344.8 622.8,344.8 653.0,344.8 683.2,344.8 713.4,344.8 743.6,344.8 773.8,344.8 788.9,344.8 804.0,343.2"/>
 <circle class="dot d1" cx="532.2" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 10% load: 180 ns</title></circle>
 <circle class="dot d1" cx="562.4" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 20% load: 180 ns</title></circle>
 <circle class="dot d1" cx="592.6" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 30% load: 180 ns</title></circle>
@@ -111,31 +111,31 @@
 <circle class="dot d1" cx="743.6" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 80% load: 180 ns</title></circle>
 <circle class="dot d1" cx="773.8" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 90% load: 180 ns</title></circle>
 <circle class="dot d1" cx="788.9" cy="344.8" r="4.5"><title>Paired, no contention, 1518 B, 95% load: 180 ns</title></circle>
-<circle class="dot d1" cx="804.0" cy="271.9" r="4.5"><title>Paired, no contention, 1518 B, 100% load: 1.36 &#181;s</title></circle>
-<polyline class="line l2" points="532.2,198.2 562.4,194.1 592.6,175.5 622.8,175.7 653.0,161.2 683.2,142.9 713.4,138.3 743.6,133.4 773.8,124.5 788.9,126.8 804.0,125.8"/>
+<circle class="dot d1" cx="804.0" cy="343.2" r="4.5"><title>Paired, no contention, 1518 B, 100% load: 188 ns</title></circle>
+<polyline class="line l2" points="532.2,198.2 562.4,194.1 592.6,175.6 622.8,175.7 653.0,160.6 683.2,141.2 713.4,137.7 743.6,135.7 773.8,130.6 788.9,126.5 804.0,124.9"/>
 <circle class="dot d2" cx="532.2" cy="198.2" r="4.5"><title>Uniform random, 1518 B, 10% load: 10.5 &#181;s</title></circle>
 <circle class="dot d2" cx="562.4" cy="194.1" r="4.5"><title>Uniform random, 1518 B, 20% load: 11.8 &#181;s</title></circle>
-<circle class="dot d2" cx="592.6" cy="175.5" r="4.5"><title>Uniform random, 1518 B, 30% load: 19.7 &#181;s</title></circle>
+<circle class="dot d2" cx="592.6" cy="175.6" r="4.5"><title>Uniform random, 1518 B, 30% load: 19.7 &#181;s</title></circle>
 <circle class="dot d2" cx="622.8" cy="175.7" r="4.5"><title>Uniform random, 1518 B, 40% load: 19.6 &#181;s</title></circle>
-<circle class="dot d2" cx="653.0" cy="161.2" r="4.5"><title>Uniform random, 1518 B, 50% load: 29.3 &#181;s</title></circle>
-<circle class="dot d2" cx="683.2" cy="142.9" r="4.5"><title>Uniform random, 1518 B, 60% load: 48.7 &#181;s</title></circle>
-<circle class="dot d2" cx="713.4" cy="138.3" r="4.5"><title>Uniform random, 1518 B, 70% load: 55.3 &#181;s</title></circle>
-<circle class="dot d2" cx="743.6" cy="133.4" r="4.5"><title>Uniform random, 1518 B, 80% load: 63.4 &#181;s</title></circle>
-<circle class="dot d2" cx="773.8" cy="124.5" r="4.5"><title>Uniform random, 1518 B, 90% load: 81.2 &#181;s</title></circle>
-<circle class="dot d2" cx="788.9" cy="126.8" r="4.5"><title>Uniform random, 1518 B, 95% load: 76.1 &#181;s</title></circle>
-<circle class="dot d2" cx="804.0" cy="125.8" r="4.5"><title>Uniform random, 1518 B, 100% load: 78.3 &#181;s</title></circle>
-<polyline class="line l3" points="532.2,183.8 562.4,168.3 592.6,145.9 622.8,119.4 653.0,118.9 683.2,119.2 713.4,119.0 743.6,119.0 773.8,118.9 788.9,118.9 804.0,121.8"/>
+<circle class="dot d2" cx="653.0" cy="160.6" r="4.5"><title>Uniform random, 1518 B, 50% load: 29.8 &#181;s</title></circle>
+<circle class="dot d2" cx="683.2" cy="141.2" r="4.5"><title>Uniform random, 1518 B, 60% load: 51.1 &#181;s</title></circle>
+<circle class="dot d2" cx="713.4" cy="137.7" r="4.5"><title>Uniform random, 1518 B, 70% load: 56.2 &#181;s</title></circle>
+<circle class="dot d2" cx="743.6" cy="135.7" r="4.5"><title>Uniform random, 1518 B, 80% load: 59.6 &#181;s</title></circle>
+<circle class="dot d2" cx="773.8" cy="130.6" r="4.5"><title>Uniform random, 1518 B, 90% load: 68.6 &#181;s</title></circle>
+<circle class="dot d2" cx="788.9" cy="126.5" r="4.5"><title>Uniform random, 1518 B, 95% load: 76.9 &#181;s</title></circle>
+<circle class="dot d2" cx="804.0" cy="124.9" r="4.5"><title>Uniform random, 1518 B, 100% load: 80.3 &#181;s</title></circle>
+<polyline class="line l3" points="532.2,183.8 562.4,168.4 592.6,146.0 622.8,119.5 653.0,119.2 683.2,119.1 713.4,119.0 743.6,118.9 773.8,118.9 788.9,119.0 804.0,122.3"/>
 <circle class="dot d3" cx="532.2" cy="183.8" r="4.5"><title>Three ports into one, 1518 B, 10% load: 15.7 &#181;s</title></circle>
-<circle class="dot d3" cx="562.4" cy="168.3" r="4.5"><title>Three ports into one, 1518 B, 20% load: 24.1 &#181;s</title></circle>
-<circle class="dot d3" cx="592.6" cy="145.9" r="4.5"><title>Three ports into one, 1518 B, 30% load: 44.8 &#181;s</title></circle>
-<circle class="dot d3" cx="622.8" cy="119.4" r="4.5"><title>Three ports into one, 1518 B, 40% load: 93.6 &#181;s</title></circle>
-<circle class="dot d3" cx="653.0" cy="118.9" r="4.5"><title>Three ports into one, 1518 B, 50% load: 94.7 &#181;s</title></circle>
-<circle class="dot d3" cx="683.2" cy="119.2" r="4.5"><title>Three ports into one, 1518 B, 60% load: 94.1 &#181;s</title></circle>
+<circle class="dot d3" cx="562.4" cy="168.4" r="4.5"><title>Three ports into one, 1518 B, 20% load: 24 &#181;s</title></circle>
+<circle class="dot d3" cx="592.6" cy="146.0" r="4.5"><title>Three ports into one, 1518 B, 30% load: 44.7 &#181;s</title></circle>
+<circle class="dot d3" cx="622.8" cy="119.5" r="4.5"><title>Three ports into one, 1518 B, 40% load: 93.3 &#181;s</title></circle>
+<circle class="dot d3" cx="653.0" cy="119.2" r="4.5"><title>Three ports into one, 1518 B, 50% load: 94.1 &#181;s</title></circle>
+<circle class="dot d3" cx="683.2" cy="119.1" r="4.5"><title>Three ports into one, 1518 B, 60% load: 94.4 &#181;s</title></circle>
 <circle class="dot d3" cx="713.4" cy="119.0" r="4.5"><title>Three ports into one, 1518 B, 70% load: 94.5 &#181;s</title></circle>
-<circle class="dot d3" cx="743.6" cy="119.0" r="4.5"><title>Three ports into one, 1518 B, 80% load: 94.5 &#181;s</title></circle>
-<circle class="dot d3" cx="773.8" cy="118.9" r="4.5"><title>Three ports into one, 1518 B, 90% load: 94.7 &#181;s</title></circle>
-<circle class="dot d3" cx="788.9" cy="118.9" r="4.5"><title>Three ports into one, 1518 B, 95% load: 94.8 &#181;s</title></circle>
-<circle class="dot d3" cx="804.0" cy="121.8" r="4.5"><title>Three ports into one, 1518 B, 100% load: 87.5 &#181;s</title></circle>
-<text class="label" x="813.0" y="125.8">87.5 &#181;s</text>
-<text class="label" x="813.0" y="275.9">1.36 &#181;s</text>
+<circle class="dot d3" cx="743.6" cy="118.9" r="4.5"><title>Three ports into one, 1518 B, 80% load: 94.7 &#181;s</title></circle>
+<circle class="dot d3" cx="773.8" cy="118.9" r="4.5"><title>Three ports into one, 1518 B, 90% load: 94.8 &#181;s</title></circle>
+<circle class="dot d3" cx="788.9" cy="119.0" r="4.5"><title>Three ports into one, 1518 B, 95% load: 94.6 &#181;s</title></circle>
+<circle class="dot d3" cx="804.0" cy="122.3" r="4.5"><title>Three ports into one, 1518 B, 100% load: 86.3 &#181;s</title></circle>
+<text class="label" x="813.0" y="126.3">86.3 &#181;s</text>
+<text class="label" x="813.0" y="347.2">188 ns</text>
 </svg>

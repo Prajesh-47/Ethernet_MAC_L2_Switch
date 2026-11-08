@@ -10,7 +10,8 @@
 //              - the data bytes match what was sent
 //              - frames shorter than 60 bytes are padded with 0x00 to 60
 //              - the 4 FCS bytes equal an independent bit-serial CRC, LSB first
-//              - the gap since the previous frame is >= 12 idle cycles
+//              - the gap since the previous frame is >= 12 idle cycles, and
+//                exactly 12 when frames are back-to-back (no wasted byte)
 //              - tx_er never rises
 // UNDERRUN : one deliberate frame with tvalid dropped for 3 cycles in the
 //            middle; the MAC must raise tx_er and stat_underrun exactly then.
@@ -84,7 +85,7 @@ module tb_mac_tx;
             if (nframes > 1 || expq.size() > 0) begin
                 if (gap < min_gap) min_gap = gap;
                 if (gap > max_gap && gap < 1000) max_gap = gap;
-                if (gap <= 13) n_b2b++;
+                if (gap == 12) n_b2b++;
             end
             check(w, er_cycles, gap);
         end
@@ -139,6 +140,8 @@ module tb_mac_tx;
         repeat (2000) @(posedge clk);
 
         if (expq.size() != 0) begin errors++; $display("ERROR: %0d frames never appeared on GMII", expq.size()); end
+        if (min_gap != 12) begin errors++; $display("ERROR: smallest inter-frame gap %0d, expected exactly 12 back-to-back", min_gap); end
+        if (n_b2b == 0) begin errors++; $display("ERROR: no frames went back-to-back, so the minimum gap was never tested"); end
         if (n_underrun_pulses != 3) begin errors++; $display("ERROR: stat_underrun pulsed %0d times, expected 3", n_underrun_pulses); end
         $display("frames sent %0d, checked on GMII %0d (%0d needed padding)", nframes, n_checked, n_padded);
         $display("inter-frame gap: min %0d, max %0d idle cycles; %0d frames sent back-to-back", min_gap, max_gap, n_b2b);
