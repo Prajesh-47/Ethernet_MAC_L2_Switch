@@ -515,6 +515,7 @@ Full details are in the [timing log](fpga_timing.md).
 
 **Working and tested in simulation:**
 
+- Real Linux `ping` and TCP traffic through the RTL, every frame checked against a reference switch. See [the demo](linux_demo.md)
 - About 170 ns latency without contention, and full line rate on all ports when they don't compete, at every frame size.
   Random traffic levels off at 70-75% of line rate. See [the performance results](performance.md)
 - Complete MAC with CRC, padding and error detection
@@ -534,7 +535,6 @@ Full details are in the [timing log](fpga_timing.md).
 
 **Not done yet, and planned in simulation:**
 
-- Real network traffic hasn't been passed through the simulated switch.
 - Key properties aren't formally proven yet.
 - There's no aging, VLAN support, pause frames or loop protection.
 
@@ -575,6 +575,7 @@ make smoke   # watch the 10 directed steps pass; the easiest one to follow
 make rx      # one unit test
 make sim     # the whole switch under random traffic
 make perf    # measure throughput and latency, about 4 minutes
+make demo    # real Linux ping and TCP through the switch, about 5 seconds
 make bugs    # watch each injected bug get caught
 make test    # most of the suite
 make wave    # create build/switch.vcd

@@ -8,8 +8,8 @@ correctness, and a demonstration using real network traffic in simulation. Each 
 | --- | --- | --- |
 | 1 | Bring FPGA timing as close to the target as two more fixes allow | **done**: `sys_clk` 98-102 MHz at speed grade 8, about 25% short of the 125 MHz target |
 | 2 | Measure throughput and latency | **done**: random traffic saturates at 70-75% of line rate |
-| 3 | Pass real Linux traffic through the simulated switch | next, virtual network devices checked |
-| 4 | Prove key properties with formal verification | not started |
+| 3 | Pass real Linux traffic through the simulated switch | **done**: `ping` and TCP through the RTL, every frame checked |
+| 4 | Prove key properties with formal verification | next |
 | 5 | Add features, tested in simulation | not started |
 
 ## What having no board changes
@@ -49,30 +49,20 @@ Results and method are in [performance.md](performance.md). The switch saturates
 reaches full line rate without contention at every frame size. `make perf` regenerates the data and charts, and
 `make perfcheck`, part of `make test`, fails if the switch gets slower.
 
-## Phase 3: real traffic through the simulated switch
+## Phase 3: real traffic through the simulated switch (done)
 
-This replaces the board demonstration. A Verilator harness connects each simulated port to a Linux virtual
-network device (TAP), with each one inside its own network namespace:
+This replaces the board demonstration. `make demo` gives each switch port to its own Linux network namespace
+through a TAP device, and runs `ping` and a TCP transfer between them through the RTL in Verilator. It needs no
+sudo, and it takes about 5 seconds. Details are in [linux_demo.md](linux_demo.md).
 
-```
-ns0: ping / iperf3 <-> tap0 <-> | GMII port 0                 |
-ns1: ping / iperf3 <-> tap1 <-> | GMII port 1   switch RTL    |
-ns2: ping / iperf3 <-> tap2 <-> | GMII port 2   in Verilator  |
-ns3: ping / iperf3 <-> tap3 <-> | GMII port 3                 |
-```
-
-Real Linux network stacks would then generate ARP, ping and TCP traffic, and the actual RTL would learn,
-flood and forward it. Captures can be opened in Wireshark.
-
-- **Checked so far:** on this machine, creating TAP and veth devices works in a user and network
-  namespace, without sudo. The harness itself isn't built.
-- **Expected limit:** simulation runs far slower than real time, and this speed hasn't been measured. It
-  will show correct behaviour, but not gigabit speed. Throughput numbers come from phase 2.
-- **Possible problem:** slow simulation could trigger TCP timeouts, so `ping` and ARP are the first goal.
-- **Tools needed:** `tcpdump` or `tshark`, and `iperf3`. All are available through `apt`.
-
-Done when `ping` works between namespaces through the RTL, a capture shows learning and then unicast
-forwarding, and a single `make` target runs the demonstration.
+- **Done criteria met:** `ping` works between namespaces through the RTL, a Wireshark capture is written per
+  port, the first ARP floods and every later frame goes to one port, and one `make` target runs it all.
+- **Stronger than planned:** a checker replays every frame against a reference learning switch and requires an
+  exact match. It's needed, because with learning broken, `ping` and TCP still work. Flooding delivers every frame.
+- **Speed:** about 220 times slower than real time, which is fast enough that TCP never timed out.
+- **Tools:** none beyond `ping` and Python. The harness writes the captures itself, so `tcpdump` isn't needed.
+- **Not in CI yet:** GitHub's Ubuntu 24.04 runners block unprivileged user namespaces through AppArmor. Running
+  it there needs a step that relaxes that setting on the runner, which is a decision for the repo owner.
 
 ## Phase 4: formal verification
 
