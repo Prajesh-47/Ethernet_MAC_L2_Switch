@@ -25,6 +25,7 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | Unit tests | 8 testbenches (CRC, TX, RX, MAC loopback, ingress buffer, MAC table, switch core, 4-port smoke), all pass |
 | MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,321 / 1,321**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
+| Real Linux traffic | `ping` and a 256 KB TCP transfer between 4 Linux network namespaces, **through the RTL**; all ~350 frames went exactly where a learning switch sends them ([details](docs/linux_demo.md)) |
 | Throughput and latency | about **170 ns** latency without contention; **full line rate** on all ports without contention, at every frame size; random traffic saturates at **70–75%** ([details](docs/performance.md)) |
 | Functional coverage | **26 / 26 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts, station move); a hole fails the test |
 | Switch, congestion mode (100% load) | 35–42% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,976 cycles (limit 20,000) |
@@ -51,6 +52,21 @@ See [the full results](docs/performance.md).
 
 <p align="center"><img src="docs/perf/throughput.svg" alt="Delivered throughput against offered load" width="900"></p>
 
+## Real Linux traffic
+
+`make demo` gives each switch port to its own Linux network namespace, through a TAP device, and runs `ping` and TCP
+between them through the RTL in Verilator. It needs no sudo. The first ARP request floods, the switch learns, and every
+later frame goes to one port only. A checker replays every frame against a reference learning switch, and the run writes a
+Wireshark capture per port. See [the details](docs/linux_demo.md).
+
+```
+    ARP  02:00:00:00:00:01 -> ff:ff:ff:ff:ff:ff  port 0 -> flood   out [1, 2, 3]
+    ARP  02:00:00:00:00:02 -> 02:00:00:00:00:01  port 1 -> forward out [0]
+    IPv4 02:00:00:00:00:01 -> 02:00:00:00:00:02  port 0 -> forward out [1]
+  frames in 354: flooded 4, forwarded to one port 350, filtered 0
+  copies out 362, all matched to an expected copy: yes
+```
+
 ## Quick start
 
 ```bash
@@ -72,6 +88,7 @@ make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws doc
 | `make sim` | the 4-port switch under random traffic, no-drop mode, 3 seeds |
 | `make congest` | the same at 100% load, drops allowed, 3 seeds |
 | `make perf` | throughput and latency sweep, writes `docs/perf/`, about 4 minutes |
+| `make demo` | real Linux `ping` and TCP through the switch RTL, checked frame by frame; no sudo, about 5 s (Linux only) |
 | `make perfcheck` | fixed performance points against limits, fails if the switch gets slower |
 | `make sim125` | the whole switch at the 125 MHz minimum system clock: smoke test, then both loads, 3 seeds |
 | `make bugs` | rebuild with each injected bug; fails unless its unit test catches it |
@@ -204,6 +221,7 @@ rtl/          crc32.vh, eth_mac_rx/tx, axis_skid, eth_mac (MAC + CDC), ingress_b
               switch_core, eth_switch_4port (top)
 rtl/cdc/      async FIFO, synchronizers, reset sync (from the Asynchronous_FIFO repo)
 tb/           one self-checking testbench per block, smoke, randomized and performance switch tests, mutants.py
+demo/         Verilator harness bridging the RTL to Linux TAP devices, demo script and capture checker
 syn/          clock targets for the FPGA flow
 docs/         block diagram, waveform and its generator, project guide, performance results and charts,
               timing log, roadmap, ASIC assessment
@@ -215,6 +233,7 @@ About 1,500 lines of RTL and 2,200 lines of testbench, plus a list of 28 mutants
 ## Further documentation
 
 - [Project guide](docs/project_guide.md): the whole project explained from the start, with no Verilog needed
+- [Real Linux traffic](docs/linux_demo.md): how `make demo` connects Linux network namespaces to the RTL, what it shows, and its limits
 - [Performance](docs/performance.md): throughput and latency results, how they're measured, and their limits
 - [FPGA timing log](docs/fpga_timing.md): current area and Fmax, how to reproduce them, what each change did and why, and the next timing fixes
 - [Roadmap](docs/roadmap.md): planned phases without physical hardware, from timing and performance to real traffic in simulation, formal proofs and features

@@ -17,6 +17,7 @@
 #   make test    every test so far
 #   make perf    throughput and latency sweep, writes docs/perf/ (a few minutes)
 #   make perfcheck  fixed points against limits, fails if the switch gets slower
+#   make demo    real Linux traffic (ping, TCP) through the switch RTL, no sudo (Linux only)
 #   make lint    Verilator -Wall on the whole switch
 #   make synth   FPGA synthesis (yosys), make pnr adds place-and-route (nextpnr-ecp5)
 #   make wave    smoke test with a VCD (build/switch.vcd) + docs/waveform.svg
@@ -32,7 +33,7 @@ VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCA
 # test would look green in CI)
 run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
 
-.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs mutants sim125 perf_build perf perfcheck test all clean synth pnr
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs mutants sim125 demo_build demo perf_build perf perfcheck test all clean synth pnr
 # UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
 # the switch top does not use the ingress descriptor's length; nothing else is waived
 lint:
@@ -130,6 +131,15 @@ perf: perf_build
 # a few fixed points against limits, so a change can't quietly lose throughput
 perfcheck: perf_build
 > @python3 docs/perf_check.py
+
+# The RTL bridged to 4 TAP devices, one per network namespace (demo/run_demo.sh).
+# Plain C++ harness, no --timing: it drives the clocks itself.
+demo_build:
+> @mkdir -p build
+> verilator --cc --exe --build -O3 -j 4 -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY -Irtl $(CDC) $(MAC) $(SW) $(CURDIR)/demo/tap_switch.cpp --top-module eth_switch_4port -o tap_switch --Mdir build/obj_demo > build/build_demo.log
+
+demo: demo_build
+> @demo/run_demo.sh
 
 wave:
 > @mkdir -p build
