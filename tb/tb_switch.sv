@@ -20,6 +20,9 @@
 //   3 check    : frames to the address that only ever sent BAD frames must
 //                flood -- proving bad frames were not learned; then one
 //                maximum-size frame from every port
+//   4 move     : once traffic has drained, one station moves 0 -> 3 -> 1; after
+//                each move, unicast to it must follow (or be filtered on its
+//                new port). Catches BUG_NO_MOVE.
 // Every coverage bin must be hit, or the test fails.
 //
 // Plusargs: +N=<frames per port> (default 300)  +LOAD=<% of line rate> (default 30)
@@ -99,6 +102,10 @@ module tb_switch;
     localparam logic [47:0] BCAST   = 48'hFFFF_FFFF_FFFF;
     function automatic logic [47:0] unknown_mac(int n);  return {32'h0200_0000, 8'h99, 8'(n)}; endfunction
     function automatic logic [47:0] badonly(int port);    return {32'h0200_0000, 8'(port), 8'h0E}; endfunction
+    // The one station that changes port (phase 4). Every other source encodes its
+    // port in byte 1; this one doesn't, so the scoreboard uses roam_port for it.
+    localparam logic [47:0] ROAMER  = 48'h0200_0000_A001;
+    int roam_port = -1;
 
     // ---------------- reference model ----------------
     int model_port [logic [47:0]];          // learned MAC -> port
@@ -202,7 +209,7 @@ module tb_switch;
         if (fcs != calc) begin errors++; $display("ERROR: port %0d: FCS %h expected %h", e, fcs, calc); return; end
         if (body.size() < 60) begin errors++; $display("ERROR: port %0d: frame shorter than 64", e); return; end
         src = {body[6], body[7], body[8], body[9], body[10], body[11]};
-        ing = src[15:8];                                    // stations encode their port
+        ing = (src == ROAMER) ? roam_port : src[15:8];      // stations encode their port
         if (ing > 3) begin errors++; $display("ERROR: port %0d: unexpected source %h", e, src); return; end
         // Received frames must be an ORDERED SUBSEQUENCE of the expected frames
         // for this (ingress, egress) pair: frames may be missing (dropped under
@@ -277,6 +284,19 @@ module tb_switch;
             endcase
             drive(p, f);
         end
+    endtask
+
+    // phase 4 helper: send one frame on an idle switch and wait until every copy
+    // the model expects has arrived (or the timeout, which the final checks catch)
+    task automatic send_and_settle(int p, logic [47:0] src, logic [47:0] dst);
+        eth_frame f = new(); int want, t = 0;
+        f.etype = 16'h0800; f.kind = GOOD; f.src = src; f.dst = dst;
+        repeat (46) f.payload.push_back(8'($urandom()));
+        begin int n0 = n_expected; model_frame(p, f); want = n_received + (n_expected - n0); end
+        drive(p, f);
+        while (n_received < want && t < 20000) begin @(posedge sys_clk); t++; end
+        repeat (200) @(posedge sys_clk);                // learning finishes after delivery starts
+        if (n_received < want) begin errors++; $display("ERROR: station move: frame from port %0d to %h not delivered where expected", p, dst); end
     endtask
 
     // contention: two or more ingress ports want the same egress in the same cycle
@@ -392,6 +412,18 @@ module tb_switch;
         while (n_received < n_expected && timeout < 200000) begin @(posedge sys_clk); timeout++; end
         repeat (2000) @(posedge sys_clk);
 
+        // phase 4: a station moves, on an idle switch (so this holds in congestion mode too)
+        roam_port = 0; send_and_settle(0, ROAMER, station(1, 0));           // learned on port 0
+        send_and_settle(2, station(2, 0), ROAMER);                          // -> port 0
+        roam_port = 3; send_and_settle(3, ROAMER, station(0, 0));           // moves to port 3
+        send_and_settle(2, station(2, 0), ROAMER);                          // must follow: -> port 3
+        hit("station move: unicast follows");
+        roam_port = 1; send_and_settle(1, ROAMER, station(2, 0));           // moves to port 1
+        send_and_settle(3, station(3, 0), ROAMER);                          // -> port 1
+        send_and_settle(1, station(1, 1), ROAMER);                          // same port now: filtered
+        hit("station move: filtered on its new port");
+        report("phase 4");
+
         for (int p = 0; p < 4; p++) if (rx_gap_min[p] < 12) begin errors++; $display("ERROR: rx port %0d: generator gap %0d < 12", p, rx_gap_min[p]); end
         $display("smallest generator gap: %0d bytes", rx_gap_min[0]);
         $display("---- functional coverage bins ----");
@@ -400,7 +432,8 @@ module tb_switch;
                               "minimum-size frame (64 B on the wire)", "bad CRC dropped", "runt dropped", "oversized dropped",
                               "egress min-size frame (60 B + FCS)", "egress max-size frame",
                               "egress contention (>=2 requesters)", "parallel starts (disjoint ports)",
-                              "dst = bad-only source (must flood)"};
+                              "dst = bad-only source (must flood)",
+                              "station move: unicast follows", "station move: filtered on its new port"};
             int got = 0, total = 0;
             for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) if (i != j) must.push_back($sformatf("unicast %0d->%0d", i, j));
             foreach (must[k]) begin

@@ -11,8 +11,9 @@
 #   make congest milestone 8: whole switch at 100% load (drops allowed), 3 seeds
 #   make sim125  whole switch at the minimum 125 MHz system clock: smoke, then both loads
 #   make sysbugs milestone 8: every injected bug through the whole-switch test
-#   make all     test + congest + sysbugs (~10 min)
+#   make all     test + congest + sysbugs + mutants (~12 min)
 #   make bugs    rebuild with each injected bug; fails if any test still passes
+#   make mutants 28 more bugs as text edits on a copy of the RTL; fails if any is missed
 #   make test    every test so far
 #   make perf    throughput and latency sweep, writes docs/perf/ (a few minutes)
 #   make perfcheck  fixed points against limits, fails if the switch gets slower
@@ -31,7 +32,7 @@ VFLAGS := --binary --timing -Wno-fatal -Wno-WIDTH -Wno-DECLFILENAME -Wno-TIMESCA
 # test would look green in CI)
 run = ./build/obj_$(1)/sim > build/$(1).log; grep -v finish build/$(1).log; grep -q "RESULT: PASS" build/$(1).log
 
-.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs sim125 perf_build perf perfcheck test all clean synth pnr
+.PHONY: lint wave crc tx rx loop ingress table core smoke sim congest bugs sysbugs mutants sim125 perf_build perf perfcheck test all clean synth pnr
 # UNUSED* off: the FIFO keeps its binary pointers and fill level for debug, and
 # the switch top does not use the ingress descriptor's length; nothing else is waived
 lint:
@@ -150,13 +151,13 @@ bugs:
 >   if ./build/obj_$$def/sim | grep -q "RESULT: PASS"; then echo "$$def: NOT caught"; exit 1; else echo "$$def: caught"; fi; \
 > done; echo "RESULT: PASS (every injected bug caught)"
 
-# Every bug through the WHOLE-switch test, at 20% and 100% load. Two bugs are
-# EXPECTED to slip past it -- the README explains why -- and are caught by unit
-# tests instead. The target fails if any other bug is missed, or if one of the
-# two is suddenly caught (then the explanation is out of date).
+# Every bug through the WHOLE-switch test, at 20% and 100% load. One bug is
+# EXPECTED to slip past it -- the README explains why -- and is caught by a unit
+# test instead. The target fails if any other bug is missed, or if that one is
+# suddenly caught (then the explanation is out of date).
 SYSBUGS := BUG_NO_REWIND BUG_NO_MOVE BUG_NO_LEARN BUG_RX_NO_CRC BUG_PER_EGRESS_PRIORITY \
            BUG_FORK_ANY_READY BUG_FORK_GATED_VALID BUG_NO_FILTER
-SYSBUGS_MISSED := BUG_NO_MOVE BUG_FORK_GATED_VALID
+SYSBUGS_MISSED := BUG_FORK_GATED_VALID
 sysbugs:
 > @mkdir -p build
 > @for b in $(SYSBUGS); do \
@@ -192,7 +193,12 @@ pnr: synth
 
 test: lint crc tx rx loop ingress table core smoke sim sim125 perfcheck bugs
 
-all: test congest sysbugs
+# hand-written bugs applied to a copy of the RTL (the list is in tb/mutants.py),
+# so the RTL needs no ifdef for each; fails if a test misses one
+mutants:
+> @python3 tb/mutants.py
+
+all: test congest sysbugs mutants
 
 clean:
 > rm -rf build
