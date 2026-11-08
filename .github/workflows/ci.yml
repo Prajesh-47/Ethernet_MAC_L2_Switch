@@ -28,6 +28,8 @@ jobs:
         run: make congest
       - name: Whole-switch bug injection
         run: make sysbugs
+      - name: Mutants (28 hand-written bugs the tests must catch)
+        run: make mutants
       - name: Keep the logs if something failed
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4, pinned to a commit

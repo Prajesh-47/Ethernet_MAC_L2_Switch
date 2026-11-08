@@ -300,7 +300,7 @@ If this work is ever resumed, these are the places to start:
   delay, to prove the core waits. It also changes the table's answer while frames wait, to exercise
   the registered decision.
 
-These bugs were injected by hand, once each, and are **not** part of `make bugs` yet:
+These bugs were first injected by hand. They are now checked by `make mutants` (the list is in `tb/mutants.py`):
 
 | Injected bug | Test | Result |
 | --- | --- | --- |

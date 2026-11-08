@@ -26,10 +26,11 @@ Eight deliberate bugs are built in behind `ifdef`s, and the suite shows which te
 | MAC loopback across clocks | 221 frames × 5 clock setups; with the system clock deliberately too slow, 188 frames **flagged bad, 0 silently corrupt** |
 | Switch, no-drop mode (20% load) | every expected copy delivered, e.g. **1,321 / 1,321**, 0 errors, 3 seeds, at both 156.25 MHz and the 125 MHz minimum |
 | Throughput and latency | about **170 ns** latency without contention; **full line rate** on all ports without contention, at every frame size; random traffic saturates at **70–75%** ([details](docs/performance.md)) |
-| Functional coverage | **24 / 24 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts); a hole fails the test |
+| Functional coverage | **26 / 26 bins** (every unicast pair, flood, filter, bad-frame kinds, min/max size, contention, parallel starts, station move); a hole fails the test |
 | Switch, congestion mode (100% load) | 35–42% of copies dropped (see [Limitations](#limitations)), **nothing corrupted or reordered**, longest wait 8,976 cycles (limit 20,000) |
 | Protocol | 0 AXI-Stream violations on the core's outputs (unit test and whole switch) |
-| Injected bugs | **8 / 8 caught** by unit tests; 6 / 8 also by the whole-switch test ([why not all 8](#two-bugs-the-whole-switch-test-cannot-see)) |
+| Injected bugs | **8 / 8 caught** by unit tests; 7 / 8 also by the whole-switch test ([why not all 8](#the-bug-the-whole-switch-test-cannot-see)) |
+| Mutants | **28 / 28 caught**: hand-written bugs applied to a copy of the RTL ([details](#mutants)) |
 | Lint | clean, Verilator `-Wall` (unused-signal warnings waived, see Makefile) |
 | FPGA estimate (ECP5-45, speed 8, three seeds) | routes at 19% logic, 8 block RAMs, but **does not meet timing yet**: `sys_clk` 98–102 MHz against a 125 MHz minimum (see [the timing log](docs/fpga_timing.md)) |
 
@@ -57,7 +58,7 @@ See [the full results](docs/performance.md).
 sudo apt install verilator make build-essential
 
 make test       # lint + every unit test + randomized switch at 156.25 and 125 MHz + performance limits + unit-level bug injection
-make all        # test + congestion mode + whole-switch bug injection  (~10 min)
+make all        # test + congestion mode + whole-switch bug injection + mutants  (~12 min)
 make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws docs/waveform.svg
 ```
 
@@ -75,6 +76,7 @@ make wave       # smoke test with a VCD: build/switch.vcd (gtkwave), redraws doc
 | `make sim125` | the whole switch at the 125 MHz minimum system clock: smoke test, then both loads, 3 seeds |
 | `make bugs` | rebuild with each injected bug; fails unless its unit test catches it |
 | `make sysbugs` | every injected bug through the whole-switch test (expected results checked) |
+| `make mutants` | 28 more bugs, applied as text edits to a copy of the RTL; fails if a test misses one (part of `make all`) |
 | `make synth` | Yosys synthesis for Xilinx 7-series and ECP5, prints cell counts (needs `yosys`) |
 | `make pnr` | ECP5 place-and-route over three seeds, prints utilization and Fmax; reports timing without failing (needs `nextpnr-ecp5`) |
 
@@ -160,7 +162,7 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 | `tb_switch_core` | forwarding rules, waits for the table result, table changing while a frame waits, AXI-Stream on every output, start only into an empty FIFO, liveness | 6,390 / 6,390 copies, 0 AXI violations |
 | `tb_switch_smoke` | 10 directed steps over GMII: learn, unicast, flood, filter, bad frame not learned, station move, contention | all 10 steps exact |
 | `tb_perf` | whole-switch throughput and latency across patterns, sizes and loads; every frame still checked byte for byte | 594 runs |
-| `tb_switch` | whole switch: 4 independent RX clocks, legal gaps checked on the wires, reference model, ordered scoreboard per port pair, 24 coverage bins, liveness, internal AXI check | ~1,300 copies per seed, both modes |
+| `tb_switch` | whole switch: 4 independent RX clocks, legal gaps checked on the wires, reference model, ordered scoreboard per port pair, a station that moves twice, 26 coverage bins, liveness, internal AXI check | ~1,300 copies per seed, both modes |
 
 ### Injected bugs
 
@@ -169,25 +171,31 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 | `BUG_RX_NO_CRC` | RX MAC ignores CRC errors | `tb_mac_rx` | yes |
 | `BUG_NO_REWIND` | a dropped frame's bytes stay in the buffer | `tb_ingress_buf` | yes |
 | `BUG_NO_LEARN` | the table never learns | `tb_mac_table` | yes |
-| `BUG_NO_MOVE` | a station that moves keeps its old port | `tb_mac_table`, smoke step 9 | **no** |
+| `BUG_NO_MOVE` | a station that moves keeps its old port | `tb_mac_table`, smoke step 9 | yes |
 | `BUG_PER_EGRESS_PRIORITY` | no shared arbiter pointer | `tb_switch_core` (deadlock) | yes (starvation) |
 | `BUG_FORK_ANY_READY` | fork advances when *one* destination took the byte | `tb_switch_core` | yes |
 | `BUG_FORK_GATED_VALID` | `tvalid` gated by the other ports' `tready` | `tb_switch_core` (AXI) | **no** |
 | `BUG_NO_FILTER` | a frame for its own port is sent back out of it | `tb_switch_core` | yes |
 
-### Two bugs the whole-switch test cannot see
+### The bug the whole-switch test cannot see
 
-- **`BUG_NO_MOVE`**: stations never change port in the random traffic, so the random test has no
-  way to notice. The table's unit test and smoke step 9 do.
-- **`BUG_FORK_GATED_VALID`** is *latent* in this system. Every copy of a frame starts from an empty
-  FIFO and drains on the same clock, so all destinations' `tready` fall on the same edge and the
-  bad gating never fires — not even with skewed TX clock phases (tried). It only shows when
-  destinations back-pressure independently, which `tb_switch_core` forces. This bug was in the
-  first version of the core; the unit test found 146,408 AXI-Stream violations and it was fixed.
-  A protocol bug can sleep in one integration and break the next, which is why the protocol is
-  checked at the block boundary.
+**`BUG_FORK_GATED_VALID`** is *latent* in this system. Every copy of a frame starts from an empty
+FIFO and drains on the same clock, so all destinations' `tready` fall on the same edge and the
+bad gating never fires — not even with skewed TX clock phases (tried). It only shows when
+destinations back-pressure independently, which `tb_switch_core` forces. This bug was in the
+first version of the core; the unit test found 146,408 AXI-Stream violations and it was fixed.
+A protocol bug can sleep in one integration and break the next, which is why the protocol is
+checked at the block boundary.
 
 `make sysbugs` checks this exact pattern, so the table above cannot silently go out of date.
+
+### Mutants
+
+`make mutants` applies 28 more bugs, one at a time, to a copy of the RTL, and fails if the test meant to catch
+each one still passes. They cover the ingress buffer's room and prefetch logic, the table's result rules, the
+core's request and drop gating, and the TX register slice. All 28 are caught. The list is in
+[`tb/mutants.py`](tb/mutants.py). Each one is an exact text replacement, so a later change to that code
+fails the target until the mutant is rewritten, and can't silently stop testing anything.
 
 ## Repository layout
 
@@ -195,14 +203,14 @@ monitor, scoreboard and an independent reference (written from the spec, not the
 rtl/          crc32.vh, eth_mac_rx/tx, axis_skid, eth_mac (MAC + CDC), ingress_buf, mac_table,
               switch_core, eth_switch_4port (top)
 rtl/cdc/      async FIFO, synchronizers, reset sync (from the Asynchronous_FIFO repo)
-tb/           one self-checking testbench per block, plus smoke and randomized switch tests
+tb/           one self-checking testbench per block, smoke, randomized and performance switch tests, mutants.py
 syn/          clock targets for the FPGA flow
 docs/         block diagram, waveform and its generator, project guide, performance results and charts,
               timing log, roadmap, ASIC assessment
 .github/      CI: lint + all tests + FPGA synthesis + congestion + bug injection on every push
 ```
 
-About 1,500 lines of RTL and 2,150 lines of testbench.
+About 1,500 lines of RTL and 2,200 lines of testbench, plus a list of 28 mutants.
 
 ## Further documentation
 

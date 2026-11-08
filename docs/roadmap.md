@@ -120,6 +120,3 @@ installed, and starts with a small trial. See the [assessment](asic_assessment.m
   The other generators that wait a random count with `repeat` were measured on the wires and count correctly:
   `tb_mac_rx` (gaps 13-33, mean 23.3, as intended) and `tb_ingress_buf` (mean 10.9 against an expected 11).
   The root cause is still unknown.
-- Move the hand-injected bugs listed in [fpga_timing.md](fpga_timing.md#test-changes-that-came-with-this-work)
-  into `make bugs` and the README table, so they keep being checked.
-- Add a station-move scenario to `tb_switch`, which cannot currently catch `BUG_NO_MOVE`.

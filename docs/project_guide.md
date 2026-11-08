@@ -406,7 +406,7 @@ testbench code than design code.
 | **Reference model** | A separate, simple description of correct behaviour, written from the spec rather than the RTL |
 | **Scoreboard** | Records what should come out, then compares it to what does |
 | **Randomized testing** | Random traffic finds situations nobody thought to write by hand |
-| **Coverage** | Proof the interesting cases really happened. Here, 24 bins, and a miss fails the test |
+| **Coverage** | Proof the interesting cases really happened. Here, 26 bins, and a miss fails the test |
 | **Liveness** | Checks that nothing waits forever |
 | **Seed** | The starting number for the randomness. A different seed gives different traffic, and the same seed repeats it |
 
@@ -434,7 +434,8 @@ real failures if the core were reused elsewhere.
 design contains 8 deliberate bugs, switched on at build time with `ifdef`. `make bugs` builds each one
 and fails if its test doesn't catch it. During the MAC table work, a hand-injected bug revealed a real
 hole in the new test: a port that never refreshed its result went unnoticed, because the test never held
-an address long enough. The test was then strengthened.
+an address long enough. The test was then strengthened. 28 more bugs like that one are checked by `make mutants`.
+Each is a text edit applied to a copy of the RTL, so the design doesn't need an `ifdef` for each.
 
 **Measuring speed, not just correctness.** `tb_perf` offers traffic at a chosen load and frame size, and records how much
 gets through and how long it takes. Three traffic patterns are used because they answer different questions: paired
